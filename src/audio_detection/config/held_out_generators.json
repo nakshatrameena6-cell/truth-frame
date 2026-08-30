@@ -1,0 +1,5 @@
+{
+  "version": "phase0-v1",
+  "purpose": "Generators excluded from every training split.",
+  "generators": ["heldout_generator_a", "heldout_generator_b"]
+}
