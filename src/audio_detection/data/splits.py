@@ -14,7 +14,7 @@ def assign_splits(samples: list[Sample] | tuple[Sample, ...], held_out_generator
         if s.generator in held_out_generators:
             split = "test"
         else:
-            b = _bucket(f"{s.source_id}|{s.speaker_id}|{s.generator}", seed)
+            b = _bucket(f"{s.source_id}|{s.speaker_id}", seed)
             split = "train" if b < train else "validation" if b < train + validation else "test"
         output.append(replace(s, split=split))
     manifest = CorpusManifest(tuple(output)); assert_no_leakage(manifest, held_out_generators); return manifest
@@ -25,11 +25,11 @@ def assert_no_leakage(manifest: CorpusManifest, held_out_generators: set[str]) -
         for s in manifest.samples: memberships.setdefault(getattr(s, field), set()).add(s.split)
         leaking = [v for v, groups in memberships.items() if len(groups) > 1]
         if leaking: raise ValueError(f"{field} leakage across splits: {leaking[:3]}")
-    generator_memberships: dict[str, set[str]] = {}
-    for s in manifest.samples:
-        if s.is_synthetic: generator_memberships.setdefault(s.generator, set()).add(s.split)
-    leaking_generators = [v for v, groups in generator_memberships.items() if len(groups) > 1]
-    if leaking_generators: raise ValueError(f"generator leakage across splits: {leaking_generators[:3]}")
     trained = {s.generator for s in manifest.samples if s.split == "train"}
     overlap = trained & held_out_generators
     if overlap: raise ValueError(f"held-out generators in training: {sorted(overlap)}")
+    for field in ("source_id", "speaker_id"):
+        held_out_pool = {getattr(s, field) for s in manifest.samples if s.is_synthetic and s.generator in held_out_generators}
+        seen_pool = {getattr(s, field) for s in manifest.samples if s.is_synthetic and s.generator not in held_out_generators}
+        shared = held_out_pool & seen_pool
+        if shared: raise ValueError(f"held-out and seen generator {field} pools overlap: {sorted(shared)[:3]}")
