@@ -10,7 +10,7 @@ class DetectionResult:
     def to_dict(self) -> dict: return asdict(self)
 
 class AudioDetector:
-    """Pure deterministic inference; model parameters are supplied locally."""
+    """Pure deterministic offline inference; defaults are explicitly untrained."""
     def __init__(self, model_version: str = "phase0-untrained", weights: tuple = (0., 0., 0., 0.), bias: float = 0., temperature: float = 1.):
         self.model_version, self.weights, self.bias = model_version, tuple(weights), bias
         self.calibrator, self.frontend = TemperatureScaler(temperature), HybridFrontend()

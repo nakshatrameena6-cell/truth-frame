@@ -2,54 +2,118 @@ import io
 import struct
 import unittest
 import wave
-from dataclasses import replace
-from unittest.mock import patch
-from audio_detection.data import Sample, CorpusManifest, assign_splits, assert_no_leakage
+from dataclasses import asdict, replace
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from audio_detection.data import CorpusManifest, Sample, assert_no_leakage, assign_splits
 from audio_detection.detector import AudioDetector
 from audio_detection.evaluation import evaluate
+
 
 def make_wav(samples, rate=8000):
     stream = io.BytesIO()
     with wave.open(stream, "wb") as output:
-        output.setnchannels(1); output.setsampwidth(2); output.setframerate(rate)
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(rate)
         output.writeframes(struct.pack("<%dh" % len(samples), *samples))
     return stream.getvalue()
 
-class Phase0Tests(unittest.TestCase):
-    def sample(self, ident, source, speaker, generator):
-        return Sample(ident, source, speaker, "hi", True, generator, "x.wav", "clean", 16000, 1)
-    def test_heldout_is_test_and_no_leakage(self):
-        manifest = assign_splits([self.sample("1", "a", "p", "held"), self.sample("2", "b", "q", "train")], {"held"})
+
+class Phase1Tests(unittest.TestCase):
+    def sample(self, ident, source, speaker, generator="seen", **overrides):
+        values = dict(
+            sample_id=ident, source_id=source, speaker_id=speaker,
+            language="hi", is_synthetic=True, generator=generator,
+            audio_path="x.wav", degradation="clean", sample_rate=16000,
+            channels=1, split="unassigned",
+        )
+        values.update(overrides)
+        return Sample(**values)
+
+    def test_manifest_rejects_missing_unknown_and_invalid_values(self):
+        valid = asdict(self.sample("1", "source", "speaker"))
+        for mutation in (
+            lambda row: row.pop("language"),
+            lambda row: row.update(extra="unexpected"),
+            lambda row: row.update(is_synthetic="true"),
+            lambda row: row.update(sample_rate=0),
+            lambda row: row.update(split="development"),
+            lambda row: row.update(generator=""),
+        ):
+            row = valid.copy()
+            mutation(row)
+            with self.assertRaises(ValueError):
+                Sample.from_dict(row)
+
+    def test_manifest_rejects_duplicate_ids(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "corpus.jsonl"
+            CorpusManifest((self.sample("same", "a", "p"), self.sample("same", "b", "q"))).write_jsonl(path)
+            with self.assertRaisesRegex(ValueError, "duplicate sample_id"):
+                CorpusManifest.load_jsonl(path)
+
+    def test_splits_are_deterministic(self):
+        samples = [self.sample("1", "a", "p"), self.sample("2", "b", "q")]
+        self.assertEqual(assign_splits(samples, set(), seed="fixed"), assign_splits(samples, set(), seed="fixed"))
+
+    def test_source_and_speaker_leakage_are_rejected(self):
+        source_leak = CorpusManifest((
+            self.sample("1", "shared-source", "p", split="train"),
+            self.sample("2", "shared-source", "q", split="test"),
+        ))
+        speaker_leak = CorpusManifest((
+            self.sample("1", "a", "shared-speaker", split="train"),
+            self.sample("2", "b", "shared-speaker", split="validation"),
+        ))
+        with self.assertRaisesRegex(ValueError, "source_id leakage"):
+            assert_no_leakage(source_leak, set())
+        with self.assertRaisesRegex(ValueError, "speaker_id leakage"):
+            assert_no_leakage(speaker_leak, set())
+
+    def test_multi_speaker_source_is_assigned_as_one_group(self):
+        manifest = assign_splits((
+            self.sample("1", "shared-source", "speaker-a"),
+            self.sample("2", "shared-source", "speaker-b"),
+            self.sample("3", "other-source", "speaker-b"),
+        ), set())
+        self.assertEqual({sample.split for sample in manifest.samples}, {manifest.samples[0].split})
+
+    def test_held_out_generators_are_test_only(self):
+        manifest = assign_splits((
+            self.sample("1", "held-source", "held-speaker", "held"),
+            self.sample("2", "seen-source", "seen-speaker", "seen"),
+        ), {"held"})
         self.assertEqual(manifest.samples[0].split, "test")
-    def test_same_source_never_crosses_split(self):
-        manifest = assign_splits([self.sample("1", "a", "p", "x"), self.sample("2", "a", "p", "x")], set())
-        self.assertEqual(manifest.samples[0].split, manifest.samples[1].split)
-    def test_manual_source_leakage_is_rejected(self):
-        left = self.sample("1", "shared", "p", "x").__class__("1", "shared", "p", "hi", True, "x", "x.wav", "clean", 16000, 1, "train")
-        right = self.sample("2", "shared", "p", "x").__class__("2", "shared", "p", "hi", True, "x", "x.wav", "clean", 16000, 1, "test")
-        with self.assertRaises(ValueError): assert_no_leakage(CorpusManifest((left, right)), set())
-    def test_split_bucket_excludes_generator(self):
-        samples = [self.sample("1", "source", "speaker", "g1"), self.sample("2", "source", "speaker", "g2")]
-        with patch("audio_detection.data.splits._bucket", return_value=.1) as bucket:
-            assign_splits(samples, set())
-        self.assertEqual([call.args[0] for call in bucket.call_args_list], ["source|speaker", "source|speaker"])
-    def test_seen_generator_may_span_splits(self):
-        samples = (
-            replace(self.sample("1", "source-1", "speaker-1", "seen"), split="train"),
-            replace(self.sample("2", "source-2", "speaker-2", "seen"), split="validation"),
-            replace(self.sample("3", "source-3", "speaker-3", "seen"), split="test"),
-        )
-        assert_no_leakage(CorpusManifest(samples), set())
-    def test_held_out_and_seen_generator_pools_are_disjoint(self):
-        samples = (
-            replace(self.sample("1", "shared", "held-speaker", "held"), split="test"),
-            replace(self.sample("2", "shared", "seen-speaker", "seen"), split="test"),
-        )
-        with self.assertRaises(ValueError): assert_no_leakage(CorpusManifest(samples), {"held"})
-    def test_deterministic_detector_contract(self):
-        detector = AudioDetector(weights=(0, 1, 0, 0)); result = detector.detect(make_wav([1000] * 2000))
+        self.assertNotIn("held", {sample.generator for sample in manifest.samples if sample.split in {"train", "validation"}})
+        invalid = CorpusManifest((replace(manifest.samples[0], split="validation"), manifest.samples[1]))
+        with self.assertRaisesRegex(ValueError, "held-out generators"):
+            assert_no_leakage(invalid, {"held"})
+
+    def test_detector_is_deterministic_with_stable_per_segment_shape(self):
+        detector = AudioDetector(weights=(0, 1, 0, 0))
+        result = detector.detect(make_wav([1000] * 2000))
         self.assertEqual(result, detector.detect(make_wav([1000] * 2000)))
         self.assertEqual(set(result), {"score", "segments", "model_version", "confidence"})
-    def test_metrics_are_identified(self):
-        record = evaluate([0, 0, 1, 1], [.1, .2, .8, .9], dataset="d", split="test", language="hi", generator="g", channel_condition="clean", degradation="none", model_version="v")
-        self.assertEqual(record.eer, 0); self.assertEqual(record.language, "hi")
+        self.assertEqual(result["model_version"], "phase0-untrained")
+        self.assertTrue(result["segments"])
+        self.assertEqual(set(result["segments"][0]), {"start_ms", "end_ms", "score"})
+
+    def test_eer_and_tpr_at_one_percent_fpr(self):
+        record = evaluate(
+            [0, 0, 1, 1], [.1, .2, .8, .9],
+            dataset="d", split="test", language="hi", generator="g",
+            channel_condition="clean", degradation="none", model_version="v",
+        )
+        self.assertEqual(record.eer, 0.0)
+        self.assertEqual(record.tpr_at_1pct_fpr, 1.0)
+
+    def test_top_label_ece(self):
+        record = evaluate(
+            [0, 1], [.9, .9],
+            dataset="d", split="test", language="hi", generator="g",
+            channel_condition="clean", degradation="none", model_version="v",
+        )
+        self.assertAlmostEqual(record.ece, 0.4)
+

@@ -1,5 +1,5 @@
 {
   "version": "phase0-v1",
-  "purpose": "Generators excluded from every training split.",
+  "purpose": "Placeholder generator IDs reserved for test-only evaluation; replace with immutable corpus IDs before a data run.",
   "generators": ["heldout_generator_a", "heldout_generator_b"]
 }
