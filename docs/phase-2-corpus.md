@@ -1,42 +1,59 @@
-# Phase 2 corpus status
+# Phase 2 corpus
 
-`data/manifests/corpus.jsonl` is deliberately an empty JSONL file. At the
-time of this audit the repository contains no audio files, acquisition records,
-or dataset licences. No manifest rows were invented from dataset descriptions
-or URLs; consequently there is no usable training or evaluation corpus yet.
+The checked-in manifest contains four locally stored, validated PCM-WAV
+derivatives of two natural conversations. It is a small integration corpus,
+not a representative spoof-detection training or benchmark corpus.
 
-## Required source records before adding samples
+## Provenance and licence
 
-For every source, retain its immutable source ID, download/provenance record,
-licence and permitted use, language annotation method, and (for generated
-audio) the actual generator ID. Add only files that are present locally and
-validate cleanly. Human samples use `generator: "human"`; synthetic samples
-must name their actual generator. The committed held-out generator identifiers
-are Phase 1 placeholders, not real generator data and must not be used as
-provenance.
+| Source | URL | Snapshot | Licence | Audio used | Speaker information |
+| --- | --- | --- | --- | --- | --- |
+| Doctor–Patient Indic Speech Dataset (Balaji Seetharaman) | https://github.com/bala-ceg/doctor-patient-indic-speech-dataset | `38533f09c97806df09e982ff3f63b31b6527d33a` | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | `audio/hindi/convo_001.mp3`, `audio/tamil/convo_001.mp3` | Source metadata records two speakers (doctor and patient) per conversation; it does not identify or segment individual speakers. |
 
-The target language categories are Hindi (`hi`), Tamil (`ta`), and Hinglish
-(`hi-en`). The currently available counts for all three are zero. The target
-degradation categories are `clean` and legitimately generated or licensed
-telecom-degraded audio; current counts are zero. No synthetic generator,
-including a held-out generator, is currently available.
+The source repository describes these as natural two-speaker clinic dialogues,
+labels the files Hindi and Tamil, and provides `speaker_count=2` in its CSV
+metadata. Manifest `speaker_id` values deliberately identify the *unsegmented
+speaker pair*, not a person. Both copies of a conversation have the same
+source and pair ID, keeping them in one split.
 
-## Validation and splits
+## Processing and composition
 
-Run:
+`scripts/build_phase2_corpus.py` decoded the two source MP3 files using the
+locally installed libsndfile bindings, mixed to mono (the inputs are already
+mono), and wrote clean 44.1 kHz signed-PCM WAV files. It then resampled to 8
+kHz with `scipy.signal.resample_poly`, applied the repository's
+`g711_mulaw` utility, decoded the G.711 μ-law stream back to PCM, and wrote
+the `g711_8khz` WAV derivatives. The command uses `assign_splits` rather than
+hand-setting splits; the current two source/speaker components both hash to
+`train` for the Phase 1 default seed.
+
+The manifest records only these truthful categories:
+
+- Languages: Hindi (`hi`) and Tamil (`ta`); no Hinglish (`hi-en`).
+- Labels: four human/real samples (`generator: "human"`); no synthetic data.
+- Degradations: two `clean`, two `g711_8khz`; no `amr_nb` or `whatsapp_opus`.
+
+AMR-NB and Opus were investigated but not generated: no local `ffmpeg` binary
+is available. No generated-speech source with documented generator identity,
+and no real held-out generator, was acquired. The Phase 1 held-out-generator
+IDs remain placeholders and are not used as provenance.
+
+## Validation
+
+Run from the repository root:
 
 ```powershell
 $env:PYTHONPATH='src'; python scripts/validate_corpus.py
+$env:PYTHONPATH='src'; python -m unittest discover -s tests -v
 ```
 
-The command loads the strict schema, rejects duplicate IDs and ambiguous paths,
-checks leakage and held-out-generator constraints, and validates every local
-audio reference. The dependency-free validator accepts PCM WAV only and
-reports missing paths, path escapes, unsupported/corrupt files, empty or
-near-empty audio, invalid sample rates/channels, and manifest/file metadata
-mismatches. Splits are assigned with `assign_splits`, never manually, using
-the connected source/speaker grouping defined in Phase 1.
+The validator loads the exact manifest schema, checks duplicate IDs and paths,
+checks leakage and held-out-generator constraints, and reads each local
+PCM-WAV. It reports missing files, invalid paths, unsupported/corrupt media,
+empty or near-empty audio, invalid sample rates/channels, and metadata
+mismatches. It intentionally accepts PCM WAV only.
 
-Known gap: a licensed, locally available corpus covering real and synthetic
-Hindi, Tamil, Hinglish, clean, telecom-degraded, and real held-out-generator
-audio has not been supplied to this repository.
+Known limitations: this corpus is tiny, has no validation/test components for
+the current seed, has no Hinglish or synthetic audio, and no AMR-NB/Opus
+derivatives. It must not be used to claim detection performance or balanced
+coverage.
