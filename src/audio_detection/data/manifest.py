@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import json
+import math
+import wave
 
 REQUIRED_FIELDS = {"sample_id", "source_id", "speaker_id", "language", "is_synthetic", "generator", "audio_path", "degradation", "sample_rate", "channels", "split"}
 VALID_SPLITS = {"train", "validation", "test", "unassigned"}
@@ -53,3 +55,118 @@ class CorpusManifest:
 def validate_manifest(manifest: CorpusManifest) -> None:
     ids = [s.sample_id for s in manifest.samples]
     if len(ids) != len(set(ids)): raise ValueError("duplicate sample_id")
+    paths = [Path(s.audio_path).as_posix().casefold() for s in manifest.samples]
+    if len(paths) != len(set(paths)): raise ValueError("duplicate or ambiguous audio_path")
+
+
+@dataclass(frozen=True)
+class ValidationIssue:
+    sample_id: str
+    code: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class CorpusValidation:
+    checked: int
+    passed: int
+    failed: int
+    issues: tuple[ValidationIssue, ...]
+
+    @property
+    def ok(self) -> bool:
+        return self.failed == 0
+
+
+def validate_corpus_audio(
+    manifest: CorpusManifest,
+    root: str | Path,
+    *,
+    min_sample_rate: int = 1,
+    max_channels: int = 8,
+    near_empty_rms: float = 1e-5,
+) -> CorpusValidation:
+    """Validate local PCM WAV assets referenced by a manifest.
+
+    Paths are resolved under ``root``; paths escaping it are rejected.  WAV is
+    intentionally the only supported format in this dependency-free project.
+    """
+    if min_sample_rate < 1 or max_channels < 1 or near_empty_rms < 0:
+        raise ValueError("invalid audio validation limits")
+    base = Path(root).resolve()
+    issues: list[ValidationIssue] = []
+    failed_ids: set[str] = set()
+
+    def fail(sample: Sample, code: str, detail: str) -> None:
+        failed_ids.add(sample.sample_id)
+        issues.append(ValidationIssue(sample.sample_id, code, detail))
+
+    resolved_paths: dict[Path, list[Sample]] = {}
+    for sample in manifest.samples:
+        candidate = (base / sample.audio_path).resolve()
+        try:
+            candidate.relative_to(base)
+        except ValueError:
+            continue
+        resolved_paths.setdefault(candidate, []).append(sample)
+    for path, samples in resolved_paths.items():
+        if len(samples) > 1:
+            for sample in samples:
+                fail(sample, "ambiguous_audio_path", str(path))
+
+    for sample in manifest.samples:
+        path = (base / sample.audio_path).resolve()
+        try:
+            path.relative_to(base)
+        except ValueError:
+            fail(sample, "path_outside_root", sample.audio_path)
+            continue
+        if not path.is_file():
+            fail(sample, "missing_file", sample.audio_path)
+            continue
+        if path.suffix.casefold() != ".wav":
+            fail(sample, "unsupported_format", path.suffix or "no extension")
+            continue
+        try:
+            with wave.open(str(path), "rb") as audio:
+                rate, channels = audio.getframerate(), audio.getnchannels()
+                frames, width = audio.getnframes(), audio.getsampwidth()
+                if audio.getcomptype() != "NONE":
+                    fail(sample, "unsupported_format", "compressed WAV")
+                    continue
+                if frames == 0:
+                    fail(sample, "empty_audio", "zero frames")
+                    continue
+                if rate < min_sample_rate:
+                    fail(sample, "invalid_sample_rate", str(rate))
+                if channels < 1 or channels > max_channels:
+                    fail(sample, "invalid_channels", str(channels))
+                if sample.sample_rate != rate:
+                    fail(sample, "sample_rate_mismatch", f"manifest={sample.sample_rate}, file={rate}")
+                if sample.channels != channels:
+                    fail(sample, "channels_mismatch", f"manifest={sample.channels}, file={channels}")
+                raw = audio.readframes(frames)
+                if _pcm_rms(raw, width) <= near_empty_rms:
+                    fail(sample, "near_empty_audio", f"rms<={near_empty_rms:g}")
+        except (EOFError, wave.Error, OSError) as exc:
+            fail(sample, "unreadable_audio", str(exc))
+    return CorpusValidation(len(manifest.samples), len(manifest.samples) - len(failed_ids), len(failed_ids), tuple(issues))
+
+
+def _pcm_rms(raw: bytes, width: int) -> float:
+    """Return normalized RMS for unsigned 8-bit or signed 16/24/32-bit PCM."""
+    if width not in {1, 2, 3, 4}:
+        raise wave.Error(f"unsupported PCM sample width: {width}")
+    if not raw:
+        return 0.0
+    if width == 1:
+        values = (byte - 128 for byte in raw)
+        scale = 128
+    else:
+        values = (
+            int.from_bytes(raw[index:index + width] + (b"\xff" if raw[index + width - 1] & 0x80 else b"\x00"), "little", signed=True)
+            for index in range(0, len(raw), width)
+        )
+        scale = 2 ** (8 * width - 1)
+    total = sum(value * value for value in values)
+    return math.sqrt(total / (len(raw) / width)) / scale

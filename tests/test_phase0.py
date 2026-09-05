@@ -6,7 +6,7 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from audio_detection.data import CorpusManifest, Sample, assert_no_leakage, assign_splits
+from audio_detection.data import CorpusManifest, Sample, assert_no_leakage, assign_splits, validate_corpus_audio
 from audio_detection.detector import AudioDetector
 from audio_detection.evaluation import evaluate
 
@@ -53,6 +53,52 @@ class Phase1Tests(unittest.TestCase):
             CorpusManifest((self.sample("same", "a", "p"), self.sample("same", "b", "q"))).write_jsonl(path)
             with self.assertRaisesRegex(ValueError, "duplicate sample_id"):
                 CorpusManifest.load_jsonl(path)
+
+    def test_manifest_rejects_duplicate_audio_paths(self):
+        manifest = CorpusManifest((
+            self.sample("one", "source-a", "speaker-a", audio_path="audio/one.wav"),
+            self.sample("two", "source-b", "speaker-b", audio_path="audio/one.wav"),
+        ))
+        with self.assertRaisesRegex(ValueError, "audio_path"):
+            from audio_detection.data.manifest import validate_manifest
+            validate_manifest(manifest)
+
+    def test_corpus_audio_validation_reports_metadata_and_signal_problems(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "audio").mkdir()
+            (root / "audio" / "valid.wav").write_bytes(make_wav([500] * 100, rate=8000))
+            (root / "audio" / "mismatch.wav").write_bytes(make_wav([500] * 100, rate=8000))
+            (root / "audio" / "silent.wav").write_bytes(make_wav([0] * 100, rate=8000))
+            (root / "audio" / "broken.wav").write_bytes(b"not a wav")
+            manifest = CorpusManifest((
+                self.sample("valid", "a", "p", audio_path="audio/valid.wav", sample_rate=8000),
+                self.sample("missing", "b", "q", audio_path="audio/missing.wav"),
+                self.sample("mismatch", "c", "r", audio_path="audio/mismatch.wav", sample_rate=16000),
+                self.sample("silent", "d", "s", audio_path="audio/silent.wav", sample_rate=8000),
+                self.sample("broken", "e", "t", audio_path="audio/broken.wav", sample_rate=8000),
+                self.sample("escape", "f", "u", audio_path="../outside.wav"),
+            ))
+            result = validate_corpus_audio(manifest, root)
+        self.assertEqual(result.checked, 6)
+        self.assertEqual(result.passed, 1)
+        self.assertEqual(result.failed, 5)
+        self.assertEqual({issue.code for issue in result.issues}, {
+            "missing_file", "sample_rate_mismatch", "near_empty_audio", "unreadable_audio", "path_outside_root",
+        })
+
+    def test_corpus_audio_validation_rejects_resolved_path_aliases(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "audio").mkdir()
+            (root / "audio" / "voice.wav").write_bytes(make_wav([500] * 100, rate=8000))
+            manifest = CorpusManifest((
+                self.sample("one", "a", "p", audio_path="audio/voice.wav", sample_rate=8000),
+                self.sample("two", "b", "q", audio_path="audio/../audio/voice.wav", sample_rate=8000),
+            ))
+            result = validate_corpus_audio(manifest, root)
+        self.assertEqual(result.failed, 2)
+        self.assertEqual({issue.code for issue in result.issues}, {"ambiguous_audio_path"})
 
     def test_splits_are_deterministic(self):
         samples = [self.sample("1", "a", "p"), self.sample("2", "b", "q")]
