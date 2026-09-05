@@ -164,7 +164,7 @@ def _pcm_rms(raw: bytes, width: int) -> float:
         scale = 128
     else:
         values = (
-            int.from_bytes(raw[index:index + width] + (b"\xff" if raw[index + width - 1] & 0x80 else b"\x00"), "little", signed=True)
+            int.from_bytes(raw[index:index + width], "little", signed=True)
             for index in range(0, len(raw), width)
         )
         scale = 2 ** (8 * width - 1)

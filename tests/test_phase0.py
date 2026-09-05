@@ -100,6 +100,17 @@ class Phase1Tests(unittest.TestCase):
         self.assertEqual(result.failed, 2)
         self.assertEqual({issue.code for issue in result.issues}, {"ambiguous_audio_path"})
 
+    def test_corpus_audio_validation_rejects_unsupported_formats(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "audio.mp3").write_bytes(b"not an mp3")
+            manifest = CorpusManifest((
+                self.sample("mp3", "a", "p", audio_path="audio.mp3"),
+            ))
+            result = validate_corpus_audio(manifest, root)
+        self.assertEqual(result.failed, 1)
+        self.assertEqual(result.issues[0].code, "unsupported_format")
+
     def test_splits_are_deterministic(self):
         samples = [self.sample("1", "a", "p"), self.sample("2", "b", "q")]
         self.assertEqual(assign_splits(samples, set(), seed="fixed"), assign_splits(samples, set(), seed="fixed"))
