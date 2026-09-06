@@ -1,0 +1,58 @@
+{
+  "in-domain clean": {
+    "slice_name": "in-domain clean",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase4-baseline",
+      "eer": 1.0,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.03415354445206242,
+      "count": 3
+    }
+  },
+  "cross-generator clean": {
+    "slice_name": "cross-generator clean",
+    "status": "not_evaluable",
+    "reason": "no_held_out_generator_samples",
+    "metrics": null
+  },
+  "cross-generator telecom": {
+    "slice_name": "cross-generator telecom",
+    "status": "not_evaluable",
+    "reason": "no_held_out_telecom_samples",
+    "metrics": null
+  },
+  "language fairness (hi)": {
+    "slice_name": "language fairness (hi)",
+    "status": "not_evaluable",
+    "reason": "single_class_only_real_only_requires_both_classes",
+    "metrics": null
+  },
+  "language fairness (ta)": {
+    "slice_name": "language fairness (ta)",
+    "status": "not_evaluable",
+    "reason": "single_class_only_real_only_requires_both_classes",
+    "metrics": null
+  },
+  "language fairness (en)": {
+    "slice_name": "language fairness (en)",
+    "status": "not_evaluable",
+    "reason": "single_class_only_synthetic_only_requires_both_classes",
+    "metrics": null
+  },
+  "language fairness (hinglish)": {
+    "slice_name": "language fairness (hinglish)",
+    "status": "not_evaluable",
+    "reason": "no_samples_for_language_hinglish",
+    "metrics": null
+  }
+}
