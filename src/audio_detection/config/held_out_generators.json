@@ -1,5 +1,5 @@
 {
-  "version": "phase0-v1",
-  "purpose": "Placeholder generator IDs reserved for test-only evaluation; replace with immutable corpus IDs before a data run.",
-  "generators": ["heldout_generator_a", "heldout_generator_b"]
+  "version": "phase3-v1",
+  "purpose": "Authoritative configuration for held-out generators. Generators are forbidden in train/val and allowed in test.",
+  "generators": ["pending_unresolved"]
 }

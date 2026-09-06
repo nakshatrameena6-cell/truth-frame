@@ -165,6 +165,8 @@ class Phase1Tests(unittest.TestCase):
         )
         self.assertEqual(record.eer, 0.0)
         self.assertEqual(record.tpr_at_1pct_fpr, 1.0)
+        self.assertEqual(record.tpr_at_0_1pct_fpr, 1.0)
+        self.assertEqual(record.tpr_at_5pct_fpr, 1.0)
 
     def test_top_label_ece(self):
         record = evaluate(

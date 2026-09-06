@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 @dataclass(frozen=True)
 class MetricRecord:
     dataset: str; split: str; language: str; generator: str; channel_condition: str; degradation: str; model_version: str
-    eer: float; tpr_at_1pct_fpr: float; ece: float; count: int
+    eer: float; tpr_at_0_1pct_fpr: float; tpr_at_1pct_fpr: float; tpr_at_5pct_fpr: float; ece: float; count: int
 
 def evaluate(labels: list[int], scores: list[float], *, dataset: str, split: str, language: str, generator: str, channel_condition: str, degradation: str, model_version: str, bins: int = 10) -> MetricRecord:
     if len(labels) != len(scores) or not labels or not set(labels) >= {0, 1}:
@@ -36,6 +36,9 @@ def evaluate(labels: list[int], scores: list[float], *, dataset: str, split: str
         lo, hi = b / bins, (b + 1) / bins
         group = [(confidence, correct) for confidence, correct in confidence_and_correctness if lo <= confidence < (hi if b < bins - 1 else 1.0000001)]
         if group: ece += len(group) / len(labels) * abs(sum(confidence for confidence, _ in group) / len(group) - sum(correct for _, correct in group) / len(group))
-    return MetricRecord(dataset, split, language, generator, channel_condition, degradation, model_version, (fpr + 1 - tpr) / 2, max((t for f, t in points if f <= .01), default=0.0), ece, len(labels))
+    tpr_at_0_1 = max((t for f, t in points if f <= .001), default=0.0)
+    tpr_at_1 = max((t for f, t in points if f <= .01), default=0.0)
+    tpr_at_5 = max((t for f, t in points if f <= .05), default=0.0)
+    return MetricRecord(dataset, split, language, generator, channel_condition, degradation, model_version, (fpr + 1 - tpr) / 2, tpr_at_0_1, tpr_at_1, tpr_at_5, ece, len(labels))
 
 def to_dict(record: MetricRecord) -> dict: return asdict(record)
