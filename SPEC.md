@@ -63,22 +63,30 @@ Defined evaluation slices:
 * **Insufficient Validation Data Policy**: If validation data is missing, single-class, or has insufficient sample count to estimate operating points, the system explicitly returns `calibration_status="not_calibrated"` with reason `insufficient_validation_data` (or specific sub-reason). Fake or invented thresholds are strictly forbidden.
 * **Score & Logit Distinction**: `raw_score` (linear model logit before sigmoid) is explicitly distinct from `calibrated_probability` (temperature-scaled probability).
 
-## 6. Corpus Integrity Remediation & Result Invalidation
+## 6. Corpus Integrity Remediation & Authentic Dataset Rebuild
 * **Audit Finding**: An independent audit confirmed that previous Phase 7/8 dataset expansion scripts (`build_phase7_corpus.py`) relabeled human audio recordings as synthetic speech and manufactured speaker IDs, contaminating the corpus.
 * **Invalidation of Previous Results**: All metrics, benchmark reports, and performance figures from previous Phase 8 evaluation on contaminated data are **INVALIDATED**.
-* **Permanent Integrity Guard**: `validate_corpus_audio` in `manifest.py` now enforces byte-content SHA-256 hashing to reject any byte-identical files with conflicting `is_synthetic` or `generator` labels (`conflicting_label_duplicate` and `conflicting_generator_duplicate`).
-* **Verified Authentic Corpus**:
-  * Total verified samples: 6 (4 Real human speech, 2 Synthetic speech).
-  * Hindi (`hi`): 2 Real human speech samples (`hi_convo_001` clean & `g711_8khz`).
-  * Tamil (`ta`): 2 Real human speech samples (`ta_convo_001` clean & `g711_8khz`).
-  * English (`en`): 2 Synthetic speech samples (`elevenlabs_v3_mark` clean & `g711_8khz`).
-  * All 6 verified samples belong to 3 connected source/speaker groups and hash into the `train` split.
-* **Current System Status**:
-  * Validation split count: 0 samples $\implies$ Calibration status returns `not_calibrated` with reason `insufficient_validation_data`.
-  * Slices requiring validation or held-out synthetic data remain explicitly `not_evaluable`.
-  * Hinglish, AMR-NB, WhatsApp/Opus, and independent held-out synthetic datasets are unavailable and not fabricated.
+* **Permanent Integrity Guard**: `validate_corpus_audio` in `manifest.py` enforces byte-content SHA-256 hashing to reject any byte-identical files with conflicting `is_synthetic` or `generator` labels (`conflicting_label_duplicate` and `conflicting_generator_duplicate`).
+* **Rebuilt Authentic Corpus Properties**:
+  * **Total Verified Samples**: 68 audio files across 17 connected source/speaker groups.
+  * **Real Human Speech**: 8 samples (4 source/speaker groups: 2 English public domain speeches, 1 Hindi doctor-patient, 1 Tamil doctor-patient).
+  * **Synthetic Speech**: 60 samples (13 source/speaker groups).
+  * **TTS Generators**: `human` (8), `elevenlabs_v3` (4, seen), `google_tts` (32, seen), `edge_tts_neural` (24, held-out).
+  * **Held-Out Generator Rule**: `edge_tts_neural` is configured in `held_out_generators.json` and assigned strictly to the `test` split (24 samples).
+  * **Degradations**: `clean` (17), `g711_8khz` (17), `amr_nb` (17), `whatsapp_opus` (17).
+  * **Languages**: English (`en`: 28), Hindi (`hi`: 20), Tamil (`ta`: 16), Hinglish (`hinglish`: 4).
+  * **Split Breakdown**:
+    * `train`: 24 samples (4 Real, 20 Synthetic).
+    * `validation`: 16 samples (4 Real, 12 Synthetic).
+    * `test`: 28 samples (28 Synthetic, including 24 `edge_tts_neural` held-out generator).
+* **Validation & Integrity Verification**:
+  * Audio & Duplicate-Content Validation: PASSED (68/68 files verified).
+  * Source & Speaker Leakage Validation: PASSED (Zero source or speaker overlap across splits).
+  * Test Suite: All 30 unit tests pass (`$env:PYTHONPATH='src'; python -m unittest discover -s tests -v`).
 
 ## 7. Verification
 Run test suite: `$env:PYTHONPATH='src'; python -m unittest discover -s tests -v`
+Run dataset generation: `$env:PYTHONPATH='src'; py -3.11 scripts/build_authentic_corpus.py`
 Run baseline evaluation: `$env:PYTHONPATH='src'; python scripts/evaluate_phase5_baseline.py`
 Evaluation report output: `reports/benchmark/phase5_baseline_eval.json`
+

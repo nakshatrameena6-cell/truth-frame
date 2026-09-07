@@ -1,5 +1,6 @@
 {
   "version": "phase3-v1",
   "purpose": "Authoritative configuration for held-out generators. Generators are forbidden in train/val and allowed in test.",
-  "generators": ["pending_unresolved"]
+  "generators": ["edge_tts_neural"]
 }
+

@@ -125,10 +125,22 @@ class Phase7IntegrityTests(unittest.TestCase):
     def test_refuses_calibration_when_validation_data_is_absent(self):
         manifest_path = Path("data/manifests/corpus.jsonl")
         held_out_path = Path("src/audio_detection/config/held_out_generators.json")
+        full_manifest = CorpusManifest.load_jsonl(manifest_path)
+        no_val_manifest = CorpusManifest(tuple(s for s in full_manifest.samples if s.split != "validation"))
+
+        detector = train_model(no_val_manifest, Path("."), held_out_path, epochs=2, seed=42)
+        detector = calibrate_model(detector, no_val_manifest, Path("."), target_operating_point="fpr_1%")
+
+        self.assertEqual(detector.threshold_config.calibration_status, "not_calibrated")
+        self.assertEqual(detector.threshold_config.calibration_reason, "insufficient_validation_data")
+
+    def test_calibrates_successfully_when_validation_data_is_present(self):
+        manifest_path = Path("data/manifests/corpus.jsonl")
+        held_out_path = Path("src/audio_detection/config/held_out_generators.json")
         manifest = CorpusManifest.load_jsonl(manifest_path)
 
         detector = train_model(manifest, Path("."), held_out_path, epochs=2, seed=42)
         detector = calibrate_model(detector, manifest, Path("."), target_operating_point="fpr_1%")
 
-        self.assertEqual(detector.threshold_config.calibration_status, "not_calibrated")
-        self.assertEqual(detector.threshold_config.calibration_reason, "insufficient_validation_data")
+        self.assertEqual(detector.threshold_config.calibration_status, "calibrated")
+

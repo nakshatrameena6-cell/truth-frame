@@ -45,7 +45,29 @@ def ffmpeg_reencode(input_path: str, output_path: str, codec: str) -> None:
         raise ValueError("codec must be amr_nb or opus")
     binary = shutil.which("ffmpeg")
     if not binary:
+        try:
+            import imageio_ffmpeg
+            binary = imageio_ffmpeg.get_ffmpeg_exe()
+        except ImportError:
+            binary = None
+    if not binary:
         raise RuntimeError("AMR-NB/Opus degradation needs locally installed ffmpeg; no network download is attempted")
-    args = [binary, "-y", "-i", input_path, "-ar", "8000"] if codec == "amr_nb" else [binary, "-y", "-i", input_path]
-    args += ["-c:a", "libopencore_amrnb" if codec == "amr_nb" else "libopus", output_path]
-    subprocess.run(args, check=True, capture_output=True)
+    import tempfile
+    import os
+    ext = ".amr" if codec == "amr_nb" else ".opus"
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        if codec == "amr_nb":
+            cmd_enc = [binary, "-y", "-i", input_path, "-ar", "8000", "-c:a", "libopencore_amrnb", "-f", "amr", tmp_path]
+            cmd_dec = [binary, "-y", "-i", tmp_path, "-ar", "8000", "-c:a", "pcm_s16le", output_path]
+        else:
+            cmd_enc = [binary, "-y", "-i", input_path, "-c:a", "libopus", "-b:a", "16k", "-f", "opus", tmp_path]
+            cmd_dec = [binary, "-y", "-i", tmp_path, "-ar", "16000", "-c:a", "pcm_s16le", output_path]
+        subprocess.run(cmd_enc, check=True, capture_output=True)
+        subprocess.run(cmd_dec, check=True, capture_output=True)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
