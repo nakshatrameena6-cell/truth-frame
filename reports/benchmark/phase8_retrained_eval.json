@@ -1,0 +1,225 @@
+{
+  "in-domain clean": {
+    "slice_name": "in-domain clean",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 1.0,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.253837,
+      "count": 2
+    }
+  },
+  "cross-generator clean": {
+    "slice_name": "cross-generator clean",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 1.0,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.11096328571428571,
+      "count": 7
+    }
+  },
+  "cross-generator telecom": {
+    "slice_name": "cross-generator telecom",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 0.9722222222222222,
+      "tpr_at_0_1pct_fpr": 0.05555555555555555,
+      "tpr_at_1pct_fpr": 0.05555555555555555,
+      "tpr_at_5pct_fpr": 0.05555555555555555,
+      "ece": 0.11509495238095235,
+      "count": 21
+    }
+  },
+  "language: hi": {
+    "slice_name": "language: hi",
+    "status": "not_evaluable",
+    "reason": "single_class_only_synthetic_only_requires_both_classes",
+    "metrics": null
+  },
+  "language: ta": {
+    "slice_name": "language: ta",
+    "status": "not_evaluable",
+    "reason": "single_class_only_synthetic_only_requires_both_classes",
+    "metrics": null
+  },
+  "language: en": {
+    "slice_name": "language: en",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 1.0,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.0775998333333332,
+      "count": 12
+    }
+  },
+  "language: hinglish": {
+    "slice_name": "language: hinglish",
+    "status": "not_evaluable",
+    "reason": "single_class_only_synthetic_only_requires_both_classes",
+    "metrics": null
+  },
+  "generator: human": {
+    "slice_name": "generator: human",
+    "status": "not_evaluable",
+    "reason": "single_class_only_real_only_requires_both_classes",
+    "metrics": null
+  },
+  "generator: elevenlabs_v3": {
+    "slice_name": "generator: elevenlabs_v3",
+    "status": "not_evaluable",
+    "reason": "no_data_elevenlabs_v3",
+    "metrics": null
+  },
+  "generator: google_tts": {
+    "slice_name": "generator: google_tts",
+    "status": "not_evaluable",
+    "reason": "single_class_only_synthetic_only_requires_both_classes",
+    "metrics": null
+  },
+  "generator: edge_tts_neural": {
+    "slice_name": "generator: edge_tts_neural",
+    "status": "not_evaluable",
+    "reason": "single_class_only_synthetic_only_requires_both_classes",
+    "metrics": null
+  },
+  "degradation: clean": {
+    "slice_name": "degradation: clean",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 1.0,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.12870012499999994,
+      "count": 8
+    }
+  },
+  "degradation: g711_8khz": {
+    "slice_name": "degradation: g711_8khz",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 1.0,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.13210224999999998,
+      "count": 8
+    }
+  },
+  "degradation: amr_nb": {
+    "slice_name": "degradation: amr_nb",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 1.0,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.13418162499999997,
+      "count": 8
+    }
+  },
+  "degradation: whatsapp_opus": {
+    "slice_name": "degradation: whatsapp_opus",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 0.9285714285714286,
+      "tpr_at_0_1pct_fpr": 0.14285714285714285,
+      "tpr_at_1pct_fpr": 0.14285714285714285,
+      "tpr_at_5pct_fpr": 0.14285714285714285,
+      "ece": 0.1306656249999999,
+      "count": 8
+    }
+  },
+  "overall_test": {
+    "slice_name": "overall_test",
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "test",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase8-retrained-baseline",
+      "eer": 0.9642857142857143,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.13141240625000017,
+      "count": 32
+    },
+    "abstention_rate": 0.3125
+  }
+}

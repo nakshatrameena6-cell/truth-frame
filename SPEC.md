@@ -84,10 +84,40 @@ Defined evaluation slices:
   * Source & Speaker Leakage Validation: PASSED (Zero source or speaker overlap across splits).
   * Test Suite: All 30 unit tests pass (`$env:PYTHONPATH='src'; python -m unittest discover -s tests -v`).
 
-## 7. Verification
-Run test suite: `$env:PYTHONPATH='src'; python -m unittest discover -s tests -v`
-Run dataset generation: `$env:PYTHONPATH='src'; py -3.11 scripts/build_authentic_corpus.py`
-Run baseline evaluation: `$env:PYTHONPATH='src'; python scripts/evaluate_phase5_baseline.py`
-Evaluation report output: `reports/benchmark/phase5_baseline_eval.json`
+## 8. Phase 8 Retrain & Acceptance Results
+
+* **Corpus Commit**: `f20e22d`
+* **Checkpoint Path**: [phase8_retrained_baseline.json](file:///d:/PandaMIND/truth-frame/reports/checkpoints/phase8_retrained_baseline.json)
+* **Model Version**: `phase8-retrained-baseline`
+* **Training Config**: 10 epochs, learning rate = 0.01, seed = 42, fit strictly on `train` split (24 samples: 4 Real, 20 Synthetic).
+* **Calibration Status**: `calibrated`, temperature scaling $T = 0.6500$, derived strictly from `validation` split (16 samples: 4 Real, 12 Synthetic).
+  * `FPR 0.1%`: 0.755643
+  * `FPR 1.0%`: 0.755643
+  * `FPR 5.0%`: 0.755643
+  * `low_threshold`: 0.740789
+  * `high_threshold`: 0.755643
+* **Frozen Test Set Metrics** (32 samples: 4 Real, 28 Synthetic):
+  * **EER**: 0.9643
+  * **TPR @ 0.1% FPR**: 0.0000
+  * **TPR @ 1% FPR**: 0.0000
+  * **TPR @ 5% FPR**: 0.0000
+  * **ECE**: 0.1314
+  * **Abstention / Inconclusive Rate**: 31.25% (10/32 samples in `inconclusive` band)
+
+### Phase 8 Acceptance Criteria (AC-1 through AC-8)
+* **AC-1 (in-domain clean EER <= 5%)**: `FAIL` (EER = 1.0000 > 0.05)
+* **AC-2 (cross-generator clean EER <= 15%)**: `FAIL` (EER = 1.0000 > 0.15)
+* **AC-3 (cross-generator telecom EER <= 25%)**: `FAIL` (EER = 0.9722 > 0.25)
+* **AC-4 (TPR @ 1% FPR >= 70%)**: `FAIL` (TPR@1% = 0.0000 < 0.70)
+* **AC-5 (ECE <= 0.05)**: `FAIL` (ECE = 0.1314 > 0.05)
+* **AC-6 (Abstention rate <= 20%)**: `FAIL` (Abstention Rate = 31.25% > 20.0%)
+* **AC-7 (Language fairness max/min EER <= 2x)**: `NOT EVALUABLE` (Only 1 evaluable language slice `en`; `hi`, `ta`, `hinglish` test sets are synthetic-only)
+* **AC-8 (Baseline improvement)**: `FAIL` (Retrained TPR@1% = 0.0000 vs Phase 4 baseline = 0.9286)
+
+### Limitations & Integrity Statement
+* **Independent Real Groups**: The authenticated corpus contains only **3 independent real source/speaker groups** (12 total human speech samples across train, validation, and test splits).
+* **Generalization Limit**: Broad generalization to diverse real-world acoustic environments, dialects, or external speakers cannot be claimed from this small human-speech sample size.
+
+
 
 

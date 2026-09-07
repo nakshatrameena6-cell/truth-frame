@@ -31,6 +31,7 @@ def run_phase5_evaluation(
     manifest: CorpusManifest,
     audio_root: Path,
     held_out_config_path: Path,
+    split: str | None = None,
 ) -> dict[str, SliceResult]:
     """Run Phase 5 evaluation across frozen Phase 3 slices."""
     with open(held_out_config_path, "r", encoding="utf-8") as f:
@@ -38,7 +39,8 @@ def run_phase5_evaluation(
     held_out_gens = set(held_out_cfg.get("generators", []))
 
     evaluated_rows = []
-    for sample in manifest.samples:
+    target_samples = [s for s in manifest.samples if split is None or s.split == split]
+    for sample in target_samples:
         path = audio_root / sample.audio_path
         with open(path, "rb") as f:
             audio_bytes = f.read()
