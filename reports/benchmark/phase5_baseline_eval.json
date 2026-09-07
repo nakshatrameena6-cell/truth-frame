@@ -11,43 +11,113 @@
       "channel_condition": "mixed",
       "degradation": "mixed",
       "model_version": "phase4-baseline",
-      "eer": 1.0,
+      "eer": 0.5,
       "tpr_at_0_1pct_fpr": 0.0,
       "tpr_at_1pct_fpr": 0.0,
-      "tpr_at_5pct_fpr": 0.0,
-      "ece": 0.03415366666666664,
-      "count": 3
+      "tpr_at_5pct_fpr": 0.04,
+      "ece": 0.14141592000000003,
+      "count": 50
     }
   },
   "cross-generator clean": {
     "slice_name": "cross-generator clean",
-    "status": "not_evaluable",
-    "reason": "no_held_out_generator_samples",
-    "metrics": null
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase4-baseline",
+      "eer": 0.6200000000000001,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.2,
+      "ece": 0.18939260000000013,
+      "count": 30
+    }
   },
   "cross-generator telecom": {
     "slice_name": "cross-generator telecom",
-    "status": "not_evaluable",
-    "reason": "no_held_out_telecom_samples",
-    "metrics": null
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase4-baseline",
+      "eer": 0.6000000000000001,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.2,
+      "ece": 0.21292056666666664,
+      "count": 30
+    }
   },
   "language fairness (hi)": {
     "slice_name": "language fairness (hi)",
-    "status": "not_evaluable",
-    "reason": "single_class_only_real_only_requires_both_classes",
-    "metrics": null
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase4-baseline",
+      "eer": 0.5,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.13302733333333328,
+      "count": 36
+    }
   },
   "language fairness (ta)": {
     "slice_name": "language fairness (ta)",
-    "status": "not_evaluable",
-    "reason": "single_class_only_real_only_requires_both_classes",
-    "metrics": null
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase4-baseline",
+      "eer": 0.5,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.045454545454545456,
+      "ece": 0.13399659090909088,
+      "count": 44
+    }
   },
   "language fairness (en)": {
     "slice_name": "language fairness (en)",
-    "status": "not_evaluable",
-    "reason": "single_class_only_synthetic_only_requires_both_classes",
-    "metrics": null
+    "status": "evaluated",
+    "reason": null,
+    "metrics": {
+      "dataset": "corpus",
+      "split": "mixed",
+      "language": "mixed",
+      "generator": "mixed",
+      "channel_condition": "mixed",
+      "degradation": "mixed",
+      "model_version": "phase4-baseline",
+      "eer": 0.5,
+      "tpr_at_0_1pct_fpr": 0.0,
+      "tpr_at_1pct_fpr": 0.0,
+      "tpr_at_5pct_fpr": 0.0,
+      "ece": 0.31477706666666666,
+      "count": 30
+    }
   },
   "language fairness (hinglish)": {
     "slice_name": "language fairness (hinglish)",

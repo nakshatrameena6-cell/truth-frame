@@ -61,25 +61,39 @@ def run_phase5_evaluation(
     )
 
     # 2. cross-generator clean
-    cross_gen_clean = [
+    cross_gen_clean_pos = [
         r for r in evaluated_rows
         if r["sample"].degradation == "clean" and r["sample"].generator in held_out_gens
     ]
-    results["cross-generator clean"] = _evaluate_group(
-        cross_gen_clean, "cross-generator clean", detector.model_version,
-        empty_reason="no_held_out_generator_samples"
-    )
+    if not cross_gen_clean_pos:
+        results["cross-generator clean"] = SliceResult("cross-generator clean", "not_evaluable", "no_held_out_generator_samples", None)
+    else:
+        cross_gen_clean = [
+            r for r in evaluated_rows
+            if r["sample"].degradation == "clean" and (not r["sample"].is_synthetic or r["sample"].generator in held_out_gens)
+        ]
+        results["cross-generator clean"] = _evaluate_group(
+            cross_gen_clean, "cross-generator clean", detector.model_version,
+            empty_reason="no_held_out_generator_samples"
+        )
 
     # 3. cross-generator telecom
     telecom_degradations = {"g711_8khz", "amr_nb", "whatsapp_opus"}
-    cross_gen_telecom = [
+    cross_gen_telecom_pos = [
         r for r in evaluated_rows
         if r["sample"].degradation in telecom_degradations and r["sample"].generator in held_out_gens
     ]
-    results["cross-generator telecom"] = _evaluate_group(
-        cross_gen_telecom, "cross-generator telecom", detector.model_version,
-        empty_reason="no_held_out_telecom_samples"
-    )
+    if not cross_gen_telecom_pos:
+        results["cross-generator telecom"] = SliceResult("cross-generator telecom", "not_evaluable", "no_held_out_telecom_samples", None)
+    else:
+        cross_gen_telecom = [
+            r for r in evaluated_rows
+            if r["sample"].degradation in telecom_degradations and (not r["sample"].is_synthetic or r["sample"].generator in held_out_gens)
+        ]
+        results["cross-generator telecom"] = _evaluate_group(
+            cross_gen_telecom, "cross-generator telecom", detector.model_version,
+            empty_reason="no_held_out_telecom_samples"
+        )
 
     # 4. language fairness
     for lang in ("hi", "ta", "en", "hinglish"):
