@@ -181,3 +181,39 @@ class Phase1Tests(unittest.TestCase):
         )
         self.assertAlmostEqual(record.ece, 0.4)
 
+    def test_evaluation_metrics_direction_and_edge_cases(self):
+        # 1. Perfectly separated synthetic-positive scores (synthetic=0.7788 > real=0.7408)
+        rec_sep = evaluate(
+            [0]*4 + [1]*24, [0.740789]*4 + [0.778817]*24,
+            dataset="d", split="test", language="en", generator="g",
+            channel_condition="clean", degradation="none", model_version="v",
+        )
+        self.assertEqual(rec_sep.eer, 0.0)
+        self.assertEqual(rec_sep.tpr_at_1pct_fpr, 1.0)
+
+        # 2. Inverted scores (real=0.948 > synthetic=0.844)
+        rec_inv = evaluate(
+            [0]*4 + [1]*24, [0.948]*4 + [0.844]*24,
+            dataset="d", split="test", language="en", generator="g",
+            channel_condition="clean", degradation="none", model_version="v",
+        )
+        self.assertEqual(rec_inv.eer, 1.0)
+        self.assertEqual(rec_inv.tpr_at_1pct_fpr, 0.0)
+
+        # 3. Tied scores (real=0.5, synthetic=0.5)
+        rec_tied = evaluate(
+            [0]*5 + [1]*5, [0.5]*10,
+            dataset="d", split="test", language="en", generator="g",
+            channel_condition="clean", degradation="none", model_version="v",
+        )
+        self.assertEqual(rec_tied.eer, 0.5)
+
+        # 4. Mixed scores
+        rec_mix = evaluate(
+            [0, 0, 1, 1], [0.1, 0.7, 0.4, 0.9],
+            dataset="d", split="test", language="en", generator="g",
+            channel_condition="clean", degradation="none", model_version="v",
+        )
+        self.assertGreater(rec_mix.eer, 0.0)
+
+
