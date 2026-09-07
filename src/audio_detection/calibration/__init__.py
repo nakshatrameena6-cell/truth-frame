@@ -1,3 +1,4 @@
+from .platt import PlattScaler
 from .temperature import TemperatureScaler
 from .thresholds import (
     OPERATING_POINTS,
@@ -7,6 +8,7 @@ from .thresholds import (
 )
 
 __all__ = [
+    "PlattScaler",
     "TemperatureScaler",
     "ThresholdConfig",
     "OPERATING_POINTS",

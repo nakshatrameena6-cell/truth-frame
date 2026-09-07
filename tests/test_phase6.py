@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from audio_detection.calibration import (
-    TemperatureScaler,
+    PlattScaler,
     ThresholdConfig,
     assign_verdict_band,
     derive_calibration_thresholds,
@@ -54,8 +54,8 @@ class Phase6Tests(unittest.TestCase):
         values.update(overrides)
         return Sample(**values)
 
-    def test_temperature_scaling_fit_and_transform(self):
-        scaler = TemperatureScaler(temperature=1.0)
+    def test_scale_scaling_fit_and_transform(self):
+        scaler = PlattScaler(scale=1.0)
         scores = [-2.0, -1.0, 0.0, 1.0, 2.0]
         labels = [0, 0, 0, 1, 1]
 
@@ -64,16 +64,16 @@ class Phase6Tests(unittest.TestCase):
         self.assertEqual(len(probs_before), 5)
         self.assertTrue(all(0.0 <= p <= 1.0 for p in probs_before))
 
-        # Fit temperature
+        # Fit scale
         scaler.fit(scores, labels)
-        self.assertGreater(scaler.temperature, 0.0)
+        self.assertGreater(scaler.scale, 0.0)
 
         # After fit transform
         probs_after = scaler.transform(scores)
         self.assertEqual(len(probs_after), 5)
         # Verify determinism of fit
-        scaler2 = TemperatureScaler(temperature=1.0).fit(scores, labels)
-        self.assertEqual(scaler.temperature, scaler2.temperature)
+        scaler2 = PlattScaler(scale=1.0).fit(scores, labels)
+        self.assertEqual(scaler.scale, scaler2.scale)
 
     def test_threshold_derivation_all_three_operating_points(self):
         # 10 human samples (0) and 10 synthetic samples (1)
@@ -81,7 +81,7 @@ class Phase6Tests(unittest.TestCase):
                   0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
         labels = [0] * 10 + [1] * 10
 
-        config = derive_calibration_thresholds(scores, labels, temperature=1.0, target_operating_point="fpr_1%")
+        config = derive_calibration_thresholds(scores, labels, scale=1.0, target_operating_point="fpr_1%")
         self.assertEqual(config.calibration_status, "calibrated")
         self.assertIsNone(config.calibration_reason)
         self.assertIsNotNone(config.operating_point_thresholds)
@@ -101,7 +101,7 @@ class Phase6Tests(unittest.TestCase):
 
     def test_verdict_band_assignment(self):
         config = ThresholdConfig(
-            temperature=1.0,
+            scale=1.0,
             calibration_status="calibrated",
             calibration_reason=None,
             operating_point_thresholds={"fpr_0.1%": 0.8, "fpr_1%": 0.7, "fpr_5%": 0.6},
@@ -152,7 +152,7 @@ class Phase6Tests(unittest.TestCase):
         detector = AudioDetector(
             weights=(1.0, 2.0, 3.0, 4.0),
             bias=1.5,
-            temperature=2.0,
+            scale=2.0,
         )
         audio = make_wav([500] * 100)
         res = detector.detect(audio)
@@ -162,7 +162,7 @@ class Phase6Tests(unittest.TestCase):
         self.assertIn("verdict", res)
         self.assertIn("calibration_status", res)
 
-        # raw_score is linear logit, calibrated_probability is sigmoid(raw_score / temperature)
+        # raw_score is linear logit, calibrated_probability is sigmoid(raw_score / scale)
         self.assertNotEqual(res["raw_score"], res["calibrated_probability"])
         self.assertEqual(res["calibration_status"], "not_calibrated")
         self.assertEqual(res["verdict"], "not_calibrated")

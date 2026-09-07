@@ -14,7 +14,9 @@ OPERATING_POINTS = {
 
 @dataclass(frozen=True)
 class ThresholdConfig:
-    temperature: float = 1.0
+    temperature: float | None = None
+    scale: float | None = None
+    shift: float | None = None
     calibration_status: str = "not_calibrated"  # "calibrated" | "not_calibrated"
     calibration_reason: str | None = "insufficient_validation_data"
     operating_point_thresholds: dict[str, float] | None = None
@@ -29,8 +31,8 @@ class ThresholdConfig:
 def derive_calibration_thresholds(
     val_scores: list[float],
     val_labels: list[int],
-    temperature: float = 1.0,
     target_operating_point: str = "fpr_1%",
+    **calib_kwargs,
 ) -> ThresholdConfig:
     """Derive calibration thresholds at FPR operating points from validation data.
 
@@ -38,19 +40,19 @@ def derive_calibration_thresholds(
     """
     if not val_scores or not val_labels or len(val_scores) != len(val_labels):
         return ThresholdConfig(
-            temperature=temperature,
             calibration_status="not_calibrated",
             calibration_reason="insufficient_validation_data",
             target_operating_point=target_operating_point,
+            **calib_kwargs
         )
 
     labels_set = set(val_labels)
     if labels_set != {0, 1}:
         return ThresholdConfig(
-            temperature=temperature,
             calibration_status="not_calibrated",
             calibration_reason="insufficient_validation_data_missing_classes",
             target_operating_point=target_operating_point,
+            **calib_kwargs
         )
 
     human_scores = sorted([s for s, y in zip(val_scores, val_labels) if y == 0])
@@ -59,10 +61,10 @@ def derive_calibration_thresholds(
     # Minimum sample requirement per class to estimate thresholds
     if len(human_scores) < 2 or len(synth_scores) < 2:
         return ThresholdConfig(
-            temperature=temperature,
             calibration_status="not_calibrated",
             calibration_reason="insufficient_validation_sample_count",
             target_operating_point=target_operating_point,
+            **calib_kwargs
         )
 
     op_thresholds: dict[str, float] = {}
@@ -89,13 +91,13 @@ def derive_calibration_thresholds(
         low_thresh = max(0.0, round(high_thresh - min_margin, 6))
 
     return ThresholdConfig(
-        temperature=temperature,
         calibration_status="calibrated",
         calibration_reason=None,
         operating_point_thresholds=op_thresholds,
         low_threshold=low_thresh,
         high_threshold=high_thresh,
         target_operating_point=target_operating_point,
+        **calib_kwargs
     )
 
 

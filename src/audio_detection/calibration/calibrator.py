@@ -16,7 +16,7 @@ def calibrate_model(
     audio_root: Path,
     target_operating_point: str = "fpr_1%",
 ) -> AudioDetector:
-    """Calibrate detector temperature scaling and derive thresholds from validation split.
+    """Calibrate detector probabilities and derive thresholds from validation split.
 
     If validation data is missing or insufficient, detector returns 'not_calibrated'
     state with an explicit reason string.
@@ -26,16 +26,23 @@ def calibrate_model(
 
     if not val_samples or set(labels) != {0, 1}:
         reason = "insufficient_validation_data" if not val_samples else "insufficient_validation_data_missing_classes"
+        
+        # Determine the current calibration parameters safely
+        if hasattr(detector.calibrator, "temperature"):
+            calib_state = {"temperature": detector.calibrator.temperature}
+        else:
+            calib_state = {"scale": getattr(detector.calibrator, "scale", 1.0), "shift": getattr(detector.calibrator, "shift", 0.0)}
+
         config = ThresholdConfig(
-            temperature=detector.calibrator.temperature,
             calibration_status="not_calibrated",
             calibration_reason=reason,
             target_operating_point=target_operating_point,
+            **calib_state
         )
         detector.threshold_config = config
         return detector
 
-    frontend = HybridFrontend()
+    frontend = detector.frontend
     raw_logits: list[float] = []
 
     for s in val_samples:
@@ -64,7 +71,8 @@ def calibrate_model(
     threshold_config = derive_calibration_thresholds(
         calibrated_probs,
         labels,
-        temperature=detector.calibrator.temperature,
+        scale=detector.calibrator.scale,
+        shift=detector.calibrator.shift,
         target_operating_point=target_operating_point,
     )
     detector.threshold_config = threshold_config

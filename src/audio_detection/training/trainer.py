@@ -91,7 +91,8 @@ def save_checkpoint(detector: AudioDetector, config: dict, path: Path) -> None:
         "model_version": detector.model_version,
         "weights": detector.weights,
         "bias": detector.bias,
-        "temperature": detector.calibrator.temperature,
+        "scale": getattr(detector.calibrator, "scale", 1.0),
+        "shift": getattr(detector.calibrator, "shift", 0.0),
         "calibration_config": detector.threshold_config.to_dict() if detector.threshold_config else None,
         "config": config,
     }
@@ -106,9 +107,10 @@ def load_checkpoint(path: Path) -> AudioDetector:
     calib_cfg = None
     if "calibration_config" in data and data["calibration_config"] is not None:
         calib_cfg = ThresholdConfig(**data["calibration_config"])
-    elif "temperature" in data:
+    elif "scale" in data:
         calib_cfg = ThresholdConfig(
-            temperature=data["temperature"],
+            scale=data["scale"],
+            shift=data.get("shift", 0.0),
             calibration_status="not_calibrated",
             calibration_reason="insufficient_validation_data",
         )
@@ -117,6 +119,7 @@ def load_checkpoint(path: Path) -> AudioDetector:
         model_version=data["model_version"],
         weights=tuple(data["weights"]),
         bias=data["bias"],
-        temperature=data.get("temperature", 1.0),
+        scale=data.get("scale", 1.0),
+        shift=data.get("shift", 0.0),
         threshold_config=calib_cfg,
     )

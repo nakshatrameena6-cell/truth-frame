@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
-from .calibration import TemperatureScaler, ThresholdConfig, assign_verdict_band
+from .calibration import PlattScaler, ThresholdConfig, assign_verdict_band
 from .models import HybridFrontend
 from .preprocessing import decode_wav, vad_segments
 
@@ -32,21 +32,26 @@ class AudioDetector:
         model_version: str = "phase0-untrained",
         weights: tuple = (0.0,) * 10,
         bias: float = 0.0,
-        temperature: float = 1.0,
+        scale: float = 1.0,
+        shift: float = 0.0,
         threshold_config: ThresholdConfig | None = None,
     ):
         self.model_version = model_version
         self.weights = tuple(weights)
         self.bias = bias
-        self.calibrator = TemperatureScaler(temperature)
+        self.calibrator = PlattScaler(scale, shift)
         self.frontend = HybridFrontend()
 
         if threshold_config is not None:
             self.threshold_config = threshold_config
-            self.calibrator.temperature = threshold_config.temperature
+            if threshold_config.scale is not None:
+                self.calibrator.scale = threshold_config.scale
+            if threshold_config.shift is not None:
+                self.calibrator.shift = threshold_config.shift
         else:
             self.threshold_config = ThresholdConfig(
-                temperature=temperature,
+                scale=scale,
+                shift=shift,
                 calibration_status="not_calibrated",
                 calibration_reason="insufficient_validation_data",
             )
@@ -58,9 +63,12 @@ class AudioDetector:
         segments = []
         raw_logits = []
 
-        # Keep calibrator temperature synchronized with threshold_config
+        # Keep calibrator synchronized with threshold_config
         if self.threshold_config is not None:
-            self.calibrator.temperature = self.threshold_config.temperature
+            if self.threshold_config.scale is not None:
+                self.calibrator.scale = self.threshold_config.scale
+            if self.threshold_config.shift is not None:
+                self.calibrator.shift = self.threshold_config.shift
 
         for start, end in spans:
             features = self.frontend.embed(samples[start:end], rate)
