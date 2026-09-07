@@ -188,6 +188,10 @@ def main() -> None:
         ("hinglish", "en-IN-NeerjaExpressiveNeural", "hinglish-edge-neural-speaker-001", "Aapka swagat hai PandaMIND synthetic audio detection benchmark suite mein. Yeh audio edge neural voice se create kiya gaya hai.", "edge_neural_hinglish_001"),
         ("en", "en-IN-NeerjaExpressiveNeural", "en-edge-neural-speaker-002", "Independent held-out synthetic voice generators must be strictly isolated to the test split for unbiased evaluation.", "edge_neural_en_002"),
         ("hi", "hi-IN-MadhurNeural", "hi-edge-neural-speaker-002", "डीपफेक वॉयस डिटेक्शन सिस्टम को स्वतंत्र जनरेटर पर परखा जाना चाहिए।", "edge_neural_hi_002"),
+        ("hinglish", "hi-IN-SwaraNeural", "hinglish-edge-neural-speaker-002", "Deepfake detection system ko evaluate karne ke liye robust dataset zaroori hai.", "edge_neural_hinglish_002"),
+        ("hinglish", "hi-IN-MadhurNeural", "hinglish-edge-neural-speaker-003", "Machine learning models ki performance check karna bahut zaroori hai production se pehle.", "edge_neural_hinglish_003"),
+        ("ta", "ta-IN-ValluvarNeural", "ta-edge-neural-speaker-002", "செயற்கை நுண்ணறிவு தொழில்நுட்பங்கள் நமது அன்றாட வாழ்வில் பெரும் மாற்றங்களை கொண்டு வந்துள்ளன.", "edge_neural_ta_002"),
+        ("hi", "hi-IN-SwaraNeural", "hi-edge-neural-speaker-003", "प्राकृतिक भाषा प्रसंस्करण के क्षेत्र में नई उपलब्धियां संचार को आसान बना रही हैं।", "edge_neural_hi_003"),
     ]
 
     for lang, voice, speaker_id, text, base_name in edge_specs:
