@@ -1,7 +1,7 @@
-# PandaMIND Phase 3 & Phase 5 Evaluation Specification
+# PandaMIND Phase 3, Phase 5 & Phase 6 Specification
 
 ## Scope
-PandaMIND is an offline Python foundation for synthetic-audio detection work. Phase 3 establishes a versioned, deterministic evaluation/benchmark specification (`phase3-v1`). Phase 5 executes baseline evaluation of the trained Phase 4 detector model across defined benchmark slices.
+PandaMIND is an offline Python foundation for synthetic-audio detection work. Phase 3 establishes a versioned, deterministic evaluation/benchmark specification (`phase3-v1`). Phase 5 executes baseline evaluation of the trained Phase 4 detector model across defined benchmark slices. Phase 6 implements deterministic calibration and thresholding logic.
 
 ## 1. Benchmark Specification (`phase3-v1`)
 * **Version**: `phase3-v1`
@@ -47,7 +47,21 @@ Defined evaluation slices:
 * **If a slice lacks sample coverage or lacks representation of both classes (real & synthetic), it is marked `not_evaluable` with a specific reason string rather than reporting fake or zeroed metrics.**
 * Evaluation is fully offline and deterministic.
 
-## 5. Verification
+## 5. Calibration & Thresholding Protocol (Phase 6)
+* **Temperature Scaling**: Fits positive temperature $T$ using negative log-likelihood (NLL) grid search on validation logits and labels.
+* **Operating Points**: Derived strictly from the **validation set** (never test set):
+  * `FPR 0.1%` (0.001)
+  * `FPR 1.0%` (0.01)
+  * `FPR 5.0%` (0.05)
+* **Verdict Bands**:
+  * `consistent_with_human` (calibrated probability $p < \theta_{\text{low}}$)
+  * `inconclusive` ($\theta_{\text{low}} \le p \le \theta_{\text{high}}$)
+  * `likely_synthetic` ($p > \theta_{\text{high}}$)
+* **Inconclusive Non-disableability**: The `inconclusive` band cannot be disabled or collapsed; $\theta_{\text{low}} < \theta_{\text{high}}$ is strictly enforced.
+* **Insufficient Validation Data Policy**: If validation data is missing, single-class, or has insufficient sample count to estimate operating points, the system explicitly returns `calibration_status="not_calibrated"` with reason `insufficient_validation_data` (or specific sub-reason). Fake or invented thresholds are strictly forbidden.
+* **Score & Logit Distinction**: `raw_score` (linear model logit before sigmoid) is explicitly distinct from `calibrated_probability` (temperature-scaled probability).
+
+## 6. Verification
 Run test suite: `$env:PYTHONPATH='src'; python -m unittest discover -s tests -v`
 Run baseline evaluation: `$env:PYTHONPATH='src'; python scripts/evaluate_phase5_baseline.py`
 Evaluation report output: `reports/benchmark/phase5_baseline_eval.json`

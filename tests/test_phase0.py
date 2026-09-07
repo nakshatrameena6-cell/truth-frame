@@ -152,10 +152,15 @@ class Phase1Tests(unittest.TestCase):
         detector = AudioDetector(weights=(0, 1, 0, 0))
         result = detector.detect(make_wav([1000] * 2000))
         self.assertEqual(result, detector.detect(make_wav([1000] * 2000)))
-        self.assertEqual(set(result), {"score", "segments", "model_version", "confidence"})
+        expected_keys = {
+            "score", "segments", "model_version", "confidence",
+            "raw_score", "calibrated_probability", "verdict",
+            "calibration_status", "operating_point_thresholds", "thresholds"
+        }
+        self.assertEqual(set(result), expected_keys)
         self.assertEqual(result["model_version"], "phase0-untrained")
         self.assertTrue(result["segments"])
-        self.assertEqual(set(result["segments"][0]), {"start_ms", "end_ms", "score"})
+        self.assertEqual(set(result["segments"][0]), {"start_ms", "end_ms", "score", "raw_logit"})
 
     def test_eer_and_tpr_at_one_percent_fpr(self):
         record = evaluate(
