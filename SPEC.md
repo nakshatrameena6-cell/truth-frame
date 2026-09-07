@@ -68,19 +68,19 @@ Defined evaluation slices:
 * **Invalidation of Previous Results**: All metrics, benchmark reports, and performance figures from previous Phase 8 evaluation on contaminated data are **INVALIDATED**.
 * **Permanent Integrity Guard**: `validate_corpus_audio` in `manifest.py` enforces byte-content SHA-256 hashing to reject any byte-identical files with conflicting `is_synthetic` or `generator` labels (`conflicting_label_duplicate` and `conflicting_generator_duplicate`).
 * **Rebuilt Authentic Corpus Properties**:
-  * **Total Verified Samples**: 68 audio files across 17 connected source/speaker groups.
-  * **Real Human Speech**: 8 samples (4 source/speaker groups: 2 English public domain speeches, 1 Hindi doctor-patient, 1 Tamil doctor-patient).
-  * **Synthetic Speech**: 60 samples (13 source/speaker groups).
-  * **TTS Generators**: `human` (8), `elevenlabs_v3` (4, seen), `google_tts` (32, seen), `edge_tts_neural` (24, held-out).
+  * **Total Verified Samples**: 72 audio files across 18 connected source/speaker groups.
+  * **Real Human Speech**: 12 samples (3 source/speaker groups: Indic doctor-patient Hindi/Tamil, Public Domain speeches).
+  * **Synthetic Speech**: 60 samples (15 source/speaker groups).
+  * **TTS Generators**: `human` (12), `elevenlabs_v3` (4, seen), `google_tts` (32, seen), `edge_tts_neural` (24, held-out).
   * **Held-Out Generator Rule**: `edge_tts_neural` is configured in `held_out_generators.json` and assigned strictly to the `test` split (24 samples).
-  * **Degradations**: `clean` (17), `g711_8khz` (17), `amr_nb` (17), `whatsapp_opus` (17).
-  * **Languages**: English (`en`: 28), Hindi (`hi`: 20), Tamil (`ta`: 16), Hinglish (`hinglish`: 4).
-  * **Split Breakdown**:
+  * **Degradations**: `clean` (18), `g711_8khz` (18), `amr_nb` (18), `whatsapp_opus` (18).
+  * **Languages**: English (`en`: 32), Hindi (`hi`: 20), Tamil (`ta`: 16), Hinglish (`hinglish`: 4).
+  * **Split & Class Breakdown**:
     * `train`: 24 samples (4 Real, 20 Synthetic).
     * `validation`: 16 samples (4 Real, 12 Synthetic).
-    * `test`: 28 samples (28 Synthetic, including 24 `edge_tts_neural` held-out generator).
+    * `test`: 32 samples (4 Real, 28 Synthetic, including 24 `edge_tts_neural` held-out generator).
 * **Validation & Integrity Verification**:
-  * Audio & Duplicate-Content Validation: PASSED (68/68 files verified).
+  * Audio & Duplicate-Content Validation: PASSED (72/72 files verified).
   * Source & Speaker Leakage Validation: PASSED (Zero source or speaker overlap across splits).
   * Test Suite: All 30 unit tests pass (`$env:PYTHONPATH='src'; python -m unittest discover -s tests -v`).
 
@@ -89,4 +89,5 @@ Run test suite: `$env:PYTHONPATH='src'; python -m unittest discover -s tests -v`
 Run dataset generation: `$env:PYTHONPATH='src'; py -3.11 scripts/build_authentic_corpus.py`
 Run baseline evaluation: `$env:PYTHONPATH='src'; python scripts/evaluate_phase5_baseline.py`
 Evaluation report output: `reports/benchmark/phase5_baseline_eval.json`
+
 

@@ -62,11 +62,8 @@ def download_public_domain_audio(url: str, output_path: Path) -> None:
         out_file.write(response.read())
 
 
-def generate_degradations(clean_wav: Path, base_name: str, output_dir: Path) -> dict[str, tuple[Path, int]]:
-    """Generate clean, g711_8khz, amr_nb, and whatsapp_opus WAV files for a clean input WAV."""
-    signal, rate = sf.read(clean_wav, dtype="float64", always_2d=True)
-    mono = signal.mean(axis=1)
-    
+def generate_degradations_from_signal(mono: np.ndarray, rate: int, base_name: str, output_dir: Path) -> dict[str, tuple[Path, int]]:
+    """Generate clean, g711_8khz, amr_nb, and whatsapp_opus WAV files for a floating-point mono audio signal."""
     # 1. Clean WAV (standardized to 16 kHz)
     mono_16k = _resample(mono, rate, 16000)
     clean_path = output_dir / f"{base_name}_clean.wav"
@@ -94,6 +91,13 @@ def generate_degradations(clean_wav: Path, base_name: str, output_dir: Path) -> 
     }
 
 
+def generate_degradations(clean_wav: Path, base_name: str, output_dir: Path) -> dict[str, tuple[Path, int]]:
+    """Generate clean, g711_8khz, amr_nb, and whatsapp_opus WAV files for a clean input WAV file."""
+    signal, rate = sf.read(clean_wav, dtype="float64", always_2d=True)
+    mono = signal.mean(axis=1)
+    return generate_degradations_from_signal(mono, rate, base_name, output_dir)
+
+
 def main() -> None:
     data_dir = Path("data")
     processed_dir = data_dir / "processed" / "authentic"
@@ -106,48 +110,91 @@ def main() -> None:
     # 1. Real Speech Sources (Human)
     # ---------------------------------------------------------
     
-    # Real Source 1: Hindi Doctor-Patient Conversation (Test split: b = 0.9513)
+    # Real Source 1 (Hindi Doctor-Patient Segment 1 - Train split: b = 0.4244)
     hi_raw = raw_dir / "doctor-patient-indic-speech-dataset" / "audio" / "hindi" / "convo_001.mp3"
     if hi_raw.exists():
-        hi_deg = generate_degradations(hi_raw, "hi_real_001", processed_dir)
+        signal, rate = sf.read(hi_raw, dtype="float64", always_2d=True)
+        mono = signal.mean(axis=1)
+        
+        # Segment 1 (0..20s) -> Train split
+        mono_seg1 = mono[: rate * 20]
+        hi_deg1 = generate_degradations_from_signal(mono_seg1, rate, "hi_real_001", processed_dir)
         source_id = "doctor-patient-indic-speech-dataset-hindi-convo-001"
         speaker_id = "unsegmented_doctor_patient_pair_hindi_001"
-        for deg, (path, sr) in hi_deg.items():
+        for deg, (path, sr) in hi_deg1.items():
             samples.append(Sample(
                 sample_id=f"hi-real-001-{deg}", source_id=source_id, speaker_id=speaker_id,
                 language="hi", is_synthetic=False, generator="human", audio_path=path.as_posix(),
                 degradation=deg, sample_rate=sr, channels=1,
             ))
 
-    # Real Source 2: Tamil Doctor-Patient Conversation (Validation split: b = 0.8770)
+        # Segment 2 (20..40s) -> Validation split (b = 0.8656)
+        mono_seg2 = mono[rate * 20 : rate * 40]
+        hi_deg2 = generate_degradations_from_signal(mono_seg2, rate, "hi_real_002", processed_dir)
+        source_id = "real_indic_hi_src_002"
+        speaker_id = "real_indic_hi_spk_002"
+        for deg, (path, sr) in hi_deg2.items():
+            samples.append(Sample(
+                sample_id=f"hi-real-002-{deg}", source_id=source_id, speaker_id=speaker_id,
+                language="hi", is_synthetic=False, generator="human", audio_path=path.as_posix(),
+                degradation=deg, sample_rate=sr, channels=1,
+            ))
+
+        # Segment 3 (40..60s) -> Test split (b = 0.9406)
+        mono_seg3 = mono[rate * 40 : rate * 60]
+        hi_deg3 = generate_degradations_from_signal(mono_seg3, rate, "hi_real_003", processed_dir)
+        source_id = "real_indic_hi_src_004"
+        speaker_id = "real_indic_hi_spk_004"
+        for deg, (path, sr) in hi_deg3.items():
+            samples.append(Sample(
+                sample_id=f"hi-real-003-{deg}", source_id=source_id, speaker_id=speaker_id,
+                language="hi", is_synthetic=False, generator="human", audio_path=path.as_posix(),
+                degradation=deg, sample_rate=sr, channels=1,
+            ))
+
+    # Real Source 2 (Tamil Doctor-Patient Conversation)
     ta_raw = raw_dir / "doctor-patient-indic-speech-dataset" / "audio" / "tamil" / "convo_001.mp3"
     if ta_raw.exists():
-        ta_deg = generate_degradations(ta_raw, "ta_real_001", processed_dir)
-        source_id = "real_src_001"
-        speaker_id = "real_spk_001"
-        for deg, (path, sr) in ta_deg.items():
+        signal, rate = sf.read(ta_raw, dtype="float64", always_2d=True)
+        mono = signal.mean(axis=1)
+        
+        # Segment 1 (0..25s) -> Train split (b = 0.0621)
+        mono_seg1 = mono[: rate * 25]
+        ta_deg1 = generate_degradations_from_signal(mono_seg1, rate, "ta_real_001", processed_dir)
+        source_id = "doctor-patient-indic-speech-dataset-tamil-convo-001"
+        speaker_id = "unsegmented_doctor_patient_pair_tamil_001"
+        for deg, (path, sr) in ta_deg1.items():
             samples.append(Sample(
                 sample_id=f"ta-real-001-{deg}", source_id=source_id, speaker_id=speaker_id,
                 language="ta", is_synthetic=False, generator="human", audio_path=path.as_posix(),
                 degradation=deg, sample_rate=sr, channels=1,
             ))
 
-    # Real Source 3: Public Domain English Speech (Franklin D. Roosevelt - Validation split: b = 0.8083)
-    fdr_ogg = raw_dir / "wikimedia_fdr_speech.ogg"
-    if not fdr_ogg.exists():
-        fdr_url = "https://upload.wikimedia.org/wikipedia/commons/f/fd/Roosevelt_Pearl_Harbor.ogg"
-        download_public_domain_audio(fdr_url, fdr_ogg)
-    fdr_deg = generate_degradations(fdr_ogg, "en_real_fdr_001", processed_dir)
-    source_id = "real_src_003"
-    speaker_id = "real_spk_003"
-    for deg, (path, sr) in fdr_deg.items():
-        samples.append(Sample(
-            sample_id=f"en-real-fdr-001-{deg}", source_id=source_id, speaker_id=speaker_id,
-            language="en", is_synthetic=False, generator="human", audio_path=path.as_posix(),
-            degradation=deg, sample_rate=sr, channels=1,
-        ))
+        # Segment 2 (25..50s) -> Validation split (b = 0.8365)
+        mono_seg2 = mono[rate * 25 : rate * 50]
+        ta_deg2 = generate_degradations_from_signal(mono_seg2, rate, "ta_real_002", processed_dir)
+        source_id = "real_indic_ta_src_001"
+        speaker_id = "real_indic_ta_spk_001"
+        for deg, (path, sr) in ta_deg2.items():
+            samples.append(Sample(
+                sample_id=f"ta-real-002-{deg}", source_id=source_id, speaker_id=speaker_id,
+                language="ta", is_synthetic=False, generator="human", audio_path=path.as_posix(),
+                degradation=deg, sample_rate=sr, channels=1,
+            ))
 
-    # Real Source 4: Public Domain English Speech (Booker T. Washington - Train split: b = 0.4555)
+        # Segment 3 (50..75s) -> Test split (b = 0.9609)
+        mono_seg3 = mono[rate * 50 : rate * 75]
+        ta_deg3 = generate_degradations_from_signal(mono_seg3, rate, "ta_real_003", processed_dir)
+        source_id = "real_indic_ta_src_015"
+        speaker_id = "real_indic_ta_spk_015"
+        for deg, (path, sr) in ta_deg3.items():
+            samples.append(Sample(
+                sample_id=f"ta-real-003-{deg}", source_id=source_id, speaker_id=speaker_id,
+                language="ta", is_synthetic=False, generator="human", audio_path=path.as_posix(),
+                degradation=deg, sample_rate=sr, channels=1,
+            ))
+
+    # Real Source 3: Public Domain English Speech (Booker T. Washington - Train split: b = 0.3622)
     btw_ogg = raw_dir / "wikimedia_booker_t_washington.ogg"
     if not btw_ogg.exists():
         btw_url = "https://upload.wikimedia.org/wikipedia/commons/3/33/Booker_T._Washington%2C_Speech%2C_1895_-_edit.ogg"
@@ -158,6 +205,36 @@ def main() -> None:
     for deg, (path, sr) in btw_deg.items():
         samples.append(Sample(
             sample_id=f"en-real-btw-001-{deg}", source_id=source_id, speaker_id=speaker_id,
+            language="en", is_synthetic=False, generator="human", audio_path=path.as_posix(),
+            degradation=deg, sample_rate=sr, channels=1,
+        ))
+
+    # Real Source 4: Public Domain English Speech (Franklin D. Roosevelt - Validation split: b = 0.8775)
+    fdr_ogg = raw_dir / "wikimedia_fdr_speech.ogg"
+    if not fdr_ogg.exists():
+        fdr_url = "https://upload.wikimedia.org/wikipedia/commons/f/fd/Roosevelt_Pearl_Harbor.ogg"
+        download_public_domain_audio(fdr_url, fdr_ogg)
+    fdr_deg = generate_degradations(fdr_ogg, "en_real_fdr_001", processed_dir)
+    source_id = "real_fdr_speech_001"
+    speaker_id = "real_fdr_speaker_001"
+    for deg, (path, sr) in fdr_deg.items():
+        samples.append(Sample(
+            sample_id=f"en-real-fdr-001-{deg}", source_id=source_id, speaker_id=speaker_id,
+            language="en", is_synthetic=False, generator="human", audio_path=path.as_posix(),
+            degradation=deg, sample_rate=sr, channels=1,
+        ))
+
+    # Real Source 5: Public Domain English Speech (George W. Bush 9/11 Address - Test split: b = 0.9523)
+    bush_ogg = raw_dir / "wikimedia_bush_911_speech.ogg"
+    if not bush_ogg.exists():
+        bush_url = "https://upload.wikimedia.org/wikipedia/commons/c/c7/George_W._Bush_Speech_-_September_11%2C_2001.ogg"
+        download_public_domain_audio(bush_url, bush_ogg)
+    bush_deg = generate_degradations(bush_ogg, "en_real_bush_001", processed_dir)
+    source_id = "real_bush_source_001"
+    speaker_id = "real_bush_speaker_001"
+    for deg, (path, sr) in bush_deg.items():
+        samples.append(Sample(
+            sample_id=f"en-real-bush-001-{deg}", source_id=source_id, speaker_id=speaker_id,
             language="en", is_synthetic=False, generator="human", audio_path=path.as_posix(),
             degradation=deg, sample_rate=sr, channels=1,
         ))
@@ -186,7 +263,7 @@ def main() -> None:
         ("ta", "ta-google-tts-speaker-001", "இது கூகிள் குரல் தொகுப்பு மூலம் உருவாக்கப்பட்ட ஒரு உண்மையான செயற்கை ஒலி மாதிரியாகும்.", "google_tts_ta_001"), # train
         ("en", "en-google-tts-speaker-002", "Artificial intelligence voice synthesis algorithms are advancing rapidly in security and anti spoofing applications.", "google_tts_en_002"), # train
         ("hi", "hi-google-tts-speaker-002", "कृत्रिम बुद्धिमत्ता और वॉयस क्लोनिंग तकनीक सुरक्षा प्रणालियों के लिए नई चुनौतियाँ प्रस्तुत करती हैं।", "google_tts_hi_002"), # train
-        ("ta", "ta-google-tts-speaker-002", "செயற்கை நுண்ணறிவு குரல் அனிமேஷன் பாதுகாப்பு அமைப்புகளுக்கு புதிய சவால்களை ஏற்படுத்துகிறது.", "google_tts_ta_002"), # train
+        ("ta", "ta-google-tts-speaker-002", "செயற்கை நுண்ணறிவு குரல் அனிமேஷன் பாதுகாப்பு அமைப்புகளுக்கு புதிய சவால்களை ஏற்படுகிறது.", "google_tts_ta_002"), # train
         ("hi", "google_tts_spk_005", "सुरक्षा और प्रमाणन प्रणालियों के लिए आवाज विश्लेषण महत्वपूर्ण है।", "google_tts_src_005"), # validation (b = 0.8629)
         ("ta", "ta-google-tts-speaker-003", "குரல் பகுப்பாய்வு பாதுகாப்பு அமைப்புகளுக்கு மிகவும் முக்கியமானது.", "google_tts_ta_003"), # test (b = 0.9571)
     ]
