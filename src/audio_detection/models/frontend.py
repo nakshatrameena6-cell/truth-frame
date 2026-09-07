@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import cmath
 import math
+import numpy as np
 
 
 def _fft(x: list[complex]) -> list[complex]:
@@ -48,9 +49,12 @@ class HybridFrontend:
     def __init__(self, ssl_embedder=None):
         self.ssl = WavLMXLSRFrontend(ssl_embedder)
 
-    def embed(self, samples: list[float], sample_rate: int) -> list[float]:
-        if not samples:
+    def embed(self, samples: list[float] | np.ndarray, sample_rate: int) -> list[float]:
+        if samples is None or len(samples) == 0:
             return [0.0] * 10
+
+        if isinstance(samples, np.ndarray):
+            samples = samples.tolist()
 
         # 1. Waveform Peak Normalization (invariance to recording volume/gain)
         peak = max(abs(x) for x in samples)
