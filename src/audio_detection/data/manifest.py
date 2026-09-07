@@ -1,28 +1,41 @@
 """Strict corpus-manifest schema. JSONL is deliberately dependency-free."""
 from __future__ import annotations
+
 from dataclasses import asdict, dataclass
-from pathlib import Path
+import hashlib
 import json
 import math
+from pathlib import Path
 import wave
 
 REQUIRED_FIELDS = {"sample_id", "source_id", "speaker_id", "language", "is_synthetic", "generator", "audio_path", "degradation", "sample_rate", "channels", "split"}
 VALID_SPLITS = {"train", "validation", "test", "unassigned"}
 
+
 @dataclass(frozen=True)
 class Sample:
-    sample_id: str; source_id: str; speaker_id: str; language: str
-    is_synthetic: bool; generator: str; audio_path: str; degradation: str
-    sample_rate: int; channels: int; split: str = "unassigned"
+    sample_id: str
+    source_id: str
+    speaker_id: str
+    language: str
+    is_synthetic: bool
+    generator: str
+    audio_path: str
+    degradation: str
+    sample_rate: int
+    channels: int
+    split: str = "unassigned"
 
     @classmethod
     def from_dict(cls, item: dict) -> "Sample":
         if not isinstance(item, dict):
             raise ValueError("manifest sample must be an object")
         missing = REQUIRED_FIELDS - item.keys()
-        if missing: raise ValueError(f"manifest sample missing fields: {sorted(missing)}")
+        if missing:
+            raise ValueError(f"manifest sample missing fields: {sorted(missing)}")
         unknown = item.keys() - REQUIRED_FIELDS
-        if unknown: raise ValueError(f"manifest sample has unrecognised fields: {sorted(unknown)}")
+        if unknown:
+            raise ValueError(f"manifest sample has unrecognised fields: {sorted(unknown)}")
         value = cls(**item)
         text_fields = ("sample_id", "source_id", "speaker_id", "language", "generator", "audio_path", "degradation", "split")
         if any(not isinstance(getattr(value, field), str) for field in text_fields):
@@ -33,30 +46,53 @@ class Sample:
             raise ValueError("audio_path and degradation must be non-empty")
         if not isinstance(value.is_synthetic, bool):
             raise ValueError("is_synthetic must be boolean")
-        if value.split not in VALID_SPLITS: raise ValueError(f"invalid split: {value.split}")
-        if (not isinstance(value.sample_rate, int) or isinstance(value.sample_rate, bool)
-                or not isinstance(value.channels, int) or isinstance(value.channels, bool)
-                or value.sample_rate <= 0 or value.channels <= 0):
+        if value.split not in VALID_SPLITS:
+            raise ValueError(f"invalid split: {value.split}")
+        if (
+            not isinstance(value.sample_rate, int)
+            or isinstance(value.sample_rate, bool)
+            or not isinstance(value.channels, int)
+            or isinstance(value.channels, bool)
+            or value.sample_rate <= 0
+            or value.channels <= 0
+        ):
             raise ValueError("sample_rate and channels must be positive integers")
-        if value.is_synthetic and not value.generator: raise ValueError("synthetic samples require a generator")
-        if not value.is_synthetic and value.generator not in {"", "human", "none"}: raise ValueError("human samples must use generator human, none, or empty")
+        if value.is_synthetic and not value.generator:
+            raise ValueError("synthetic samples require a generator")
+        if not value.is_synthetic and value.generator not in {"", "human", "none"}:
+            raise ValueError("human samples must use generator human, none, or empty")
         return value
+
 
 @dataclass(frozen=True)
 class CorpusManifest:
     samples: tuple[Sample, ...]
+
     @classmethod
     def load_jsonl(cls, path: str | Path) -> "CorpusManifest":
-        entries = [Sample.from_dict(json.loads(line)) for line in Path(path).read_text(encoding="utf8").splitlines() if line.strip()]
-        manifest = cls(tuple(entries)); validate_manifest(manifest); return manifest
+        entries = [
+            Sample.from_dict(json.loads(line))
+            for line in Path(path).read_text(encoding="utf8").splitlines()
+            if line.strip()
+        ]
+        manifest = cls(tuple(entries))
+        validate_manifest(manifest)
+        return manifest
+
     def write_jsonl(self, path: str | Path) -> None:
-        Path(path).write_text("".join(json.dumps(asdict(s), sort_keys=True) + "\n" for s in self.samples), encoding="utf8")
+        Path(path).write_text(
+            "".join(json.dumps(asdict(s), sort_keys=True) + "\n" for s in self.samples),
+            encoding="utf8",
+        )
+
 
 def validate_manifest(manifest: CorpusManifest) -> None:
     ids = [s.sample_id for s in manifest.samples]
-    if len(ids) != len(set(ids)): raise ValueError("duplicate sample_id")
+    if len(ids) != len(set(ids)):
+        raise ValueError("duplicate sample_id")
     paths = [Path(s.audio_path).as_posix().casefold() for s in manifest.samples]
-    if len(paths) != len(set(paths)): raise ValueError("duplicate or ambiguous audio_path")
+    if len(paths) != len(set(paths)):
+        raise ValueError("duplicate or ambiguous audio_path")
 
 
 @dataclass(frozen=True)
@@ -88,8 +124,10 @@ def validate_corpus_audio(
 ) -> CorpusValidation:
     """Validate local PCM WAV assets referenced by a manifest.
 
-    Paths are resolved under ``root``; paths escaping it are rejected.  WAV is
+    Paths are resolved under ``root``; paths escaping it are rejected. WAV is
     intentionally the only supported format in this dependency-free project.
+    Also validates that byte-identical files do not carry conflicting
+    is_synthetic or generator labels (corpus-integrity protection).
     """
     if min_sample_rate < 1 or max_channels < 1 or near_empty_rms < 0:
         raise ValueError("invalid audio validation limits")
@@ -114,6 +152,8 @@ def validate_corpus_audio(
             for sample in samples:
                 fail(sample, "ambiguous_audio_path", str(path))
 
+    seen_audio_hashes: dict[str, Sample] = {}
+
     for sample in manifest.samples:
         path = (base / sample.audio_path).resolve()
         try:
@@ -127,7 +167,28 @@ def validate_corpus_audio(
         if path.suffix.casefold() != ".wav":
             fail(sample, "unsupported_format", path.suffix or "no extension")
             continue
+
         try:
+            content = path.read_bytes()
+            content_hash = hashlib.sha256(content).hexdigest()
+
+            if content_hash in seen_audio_hashes:
+                prev_sample = seen_audio_hashes[content_hash]
+                if sample.is_synthetic != prev_sample.is_synthetic:
+                    fail(
+                        sample,
+                        "conflicting_label_duplicate",
+                        f"audio file {sample.audio_path} is byte-identical to {prev_sample.audio_path} ({prev_sample.sample_id}) but has conflicting is_synthetic label",
+                    )
+                elif sample.generator != prev_sample.generator:
+                    fail(
+                        sample,
+                        "conflicting_generator_duplicate",
+                        f"audio file {sample.audio_path} is byte-identical to {prev_sample.audio_path} ({prev_sample.sample_id}) but has conflicting generator label ({sample.generator} vs {prev_sample.generator})",
+                    )
+            else:
+                seen_audio_hashes[content_hash] = sample
+
             with wave.open(str(path), "rb") as audio:
                 rate, channels = audio.getframerate(), audio.getnchannels()
                 frames, width = audio.getnframes(), audio.getsampwidth()
@@ -150,7 +211,13 @@ def validate_corpus_audio(
                     fail(sample, "near_empty_audio", f"rms<={near_empty_rms:g}")
         except (EOFError, wave.Error, OSError) as exc:
             fail(sample, "unreadable_audio", str(exc))
-    return CorpusValidation(len(manifest.samples), len(manifest.samples) - len(failed_ids), len(failed_ids), tuple(issues))
+
+    return CorpusValidation(
+        len(manifest.samples),
+        len(manifest.samples) - len(failed_ids),
+        len(failed_ids),
+        tuple(issues),
+    )
 
 
 def _pcm_rms(raw: bytes, width: int) -> float:

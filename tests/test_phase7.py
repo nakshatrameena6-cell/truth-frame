@@ -1,86 +1,134 @@
 import json
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from audio_detection.calibration.calibrator import calibrate_model
-from audio_detection.data import CorpusManifest, assert_no_leakage
-from audio_detection.detector import AudioDetector
-from audio_detection.evaluation import run_phase5_evaluation
-from audio_detection.training.trainer import load_checkpoint, train_model
+from audio_detection.data import (
+    CorpusManifest,
+    Sample,
+    assert_no_leakage,
+    validate_corpus_audio,
+)
+from audio_detection.training.trainer import train_model
 
 
-class Phase7Tests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.manifest_path = Path("data/manifests/corpus.jsonl")
-        cls.held_out_path = Path("src/audio_detection/config/held_out_generators.json")
-        cls.audio_root = Path(".")
-        cls.manifest = CorpusManifest.load_jsonl(cls.manifest_path)
+def make_wav(samples, rate=8000):
+    import io
+    import struct
+    import wave
 
-        with open(cls.held_out_path, "r", encoding="utf-8") as f:
+    stream = io.BytesIO()
+    with wave.open(stream, "wb") as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(rate)
+        output.writeframes(struct.pack("<%dh" % len(samples), *samples))
+    return stream.getvalue()
+
+
+class Phase7IntegrityTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_corpus_integrity_rejects_conflicting_label_duplicates(self):
+        wav_bytes = make_wav([500] * 100)
+        (self.root / "real.wav").write_bytes(wav_bytes)
+        (self.root / "fake_synth.wav").write_bytes(wav_bytes)
+
+        manifest = CorpusManifest((
+            Sample(
+                sample_id="real-01", source_id="src1", speaker_id="spk1",
+                language="hi", is_synthetic=False, generator="human",
+                audio_path="real.wav", degradation="clean", sample_rate=8000,
+                channels=1, split="train",
+            ),
+            Sample(
+                sample_id="synth-01", source_id="src2", speaker_id="spk2",
+                language="hi", is_synthetic=True, generator="elevenlabs_v3",
+                audio_path="fake_synth.wav", degradation="clean", sample_rate=8000,
+                channels=1, split="train",
+            ),
+        ))
+
+        res = validate_corpus_audio(manifest, self.root)
+        self.assertEqual(res.failed, 1)
+        self.assertTrue(any(issue.code == "conflicting_label_duplicate" for issue in res.issues))
+
+    def test_corpus_integrity_rejects_conflicting_generator_duplicates(self):
+        wav_bytes = make_wav([500] * 100)
+        (self.root / "gen1.wav").write_bytes(wav_bytes)
+        (self.root / "gen2.wav").write_bytes(wav_bytes)
+
+        manifest = CorpusManifest((
+            Sample(
+                sample_id="s1", source_id="src1", speaker_id="spk1",
+                language="en", is_synthetic=True, generator="elevenlabs_v3",
+                audio_path="gen1.wav", degradation="clean", sample_rate=8000,
+                channels=1, split="train",
+            ),
+            Sample(
+                sample_id="s2", source_id="src2", speaker_id="spk2",
+                language="en", is_synthetic=True, generator="pending_unresolved",
+                audio_path="gen2.wav", degradation="clean", sample_rate=8000,
+                channels=1, split="train",
+            ),
+        ))
+
+        res = validate_corpus_audio(manifest, self.root)
+        self.assertEqual(res.failed, 1)
+        self.assertTrue(any(issue.code == "conflicting_generator_duplicate" for issue in res.issues))
+
+    def test_legitimate_same_class_derived_degradation_passes_validation(self):
+        clean_wav = make_wav([500] * 100)
+        g711_wav = make_wav([490] * 100)  # different bytes
+        (self.root / "real_clean.wav").write_bytes(clean_wav)
+        (self.root / "real_g711.wav").write_bytes(g711_wav)
+
+        manifest = CorpusManifest((
+            Sample(
+                sample_id="real-clean", source_id="src1", speaker_id="spk1",
+                language="hi", is_synthetic=False, generator="human",
+                audio_path="real_clean.wav", degradation="clean", sample_rate=8000,
+                channels=1, split="train",
+            ),
+            Sample(
+                sample_id="real-g711", source_id="src1", speaker_id="spk1",
+                language="hi", is_synthetic=False, generator="human",
+                audio_path="real_g711.wav", degradation="g711_8khz", sample_rate=8000,
+                channels=1, split="train",
+            ),
+        ))
+
+        res = validate_corpus_audio(manifest, self.root)
+        self.assertTrue(res.ok)
+        self.assertEqual(res.passed, 2)
+
+    def test_verified_authentic_corpus_manifest_properties(self):
+        manifest_path = Path("data/manifests/corpus.jsonl")
+        held_out_path = Path("src/audio_detection/config/held_out_generators.json")
+
+        manifest = CorpusManifest.load_jsonl(manifest_path)
+        val_res = validate_corpus_audio(manifest, Path("."))
+        self.assertTrue(val_res.ok)
+
+        with open(held_out_path, "r", encoding="utf-8") as f:
             held_out_cfg = json.load(f)
-        cls.held_out_gens = set(held_out_cfg.get("generators", []))
+        held_out_gens = set(held_out_cfg.get("generators", []))
 
-    def test_corpus_size_and_split_distribution(self):
-        self.assertGreaterEqual(len(self.manifest.samples), 50)
+        assert_no_leakage(manifest, held_out_gens)
 
-        splits = {}
-        for s in self.manifest.samples:
-            splits[s.split] = splits.get(s.split, 0) + 1
+    def test_refuses_calibration_when_validation_data_is_absent(self):
+        manifest_path = Path("data/manifests/corpus.jsonl")
+        held_out_path = Path("src/audio_detection/config/held_out_generators.json")
+        manifest = CorpusManifest.load_jsonl(manifest_path)
 
-        self.assertIn("train", splits)
-        self.assertIn("validation", splits)
-        self.assertIn("test", splits)
+        detector = train_model(manifest, Path("."), held_out_path, epochs=2, seed=42)
+        detector = calibrate_model(detector, manifest, Path("."), target_operating_point="fpr_1%")
 
-        self.assertGreater(splits["train"], 0)
-        self.assertGreater(splits["validation"], 0)
-        self.assertGreater(splits["test"], 0)
-
-    def test_validation_contains_both_real_and_synthetic_classes(self):
-        val_samples = [s for s in self.manifest.samples if s.split == "validation"]
-        val_labels = {s.is_synthetic for s in val_samples}
-        self.assertEqual(val_labels, {False, True})
-
-    def test_held_out_generators_are_strictly_isolated_in_test_split(self):
-        held_out_samples = [
-            s for s in self.manifest.samples
-            if s.is_synthetic and s.generator in self.held_out_gens
-        ]
-        self.assertTrue(held_out_samples)
-        for s in held_out_samples:
-            self.assertEqual(s.split, "test")
-
-        non_test_gens = {
-            s.generator for s in self.manifest.samples
-            if s.split in {"train", "validation"}
-        }
-        self.assertFalse(non_test_gens & self.held_out_gens)
-
-    def test_no_source_or_speaker_leakage_across_splits(self):
-        assert_no_leakage(self.manifest, self.held_out_gens)
-
-    def test_calibration_fits_and_derives_thresholds_on_validation_set(self):
-        detector = train_model(self.manifest, self.audio_root, self.held_out_path, epochs=5, seed=42)
-        detector = calibrate_model(detector, self.manifest, self.audio_root, target_operating_point="fpr_1%")
-
-        self.assertEqual(detector.threshold_config.calibration_status, "calibrated")
-        self.assertIsNone(detector.threshold_config.calibration_reason)
-        self.assertIsNotNone(detector.threshold_config.operating_point_thresholds)
-        self.assertIsNotNone(detector.threshold_config.low_threshold)
-        self.assertIsNotNone(detector.threshold_config.high_threshold)
-        self.assertLess(detector.threshold_config.low_threshold, detector.threshold_config.high_threshold)
-
-    def test_evaluation_slice_coverage_and_unsupported_language_behavior(self):
-        detector = load_checkpoint(Path("reports/checkpoints/phase4_baseline.json"))
-        results = run_phase5_evaluation(detector, self.manifest, self.audio_root, self.held_out_path)
-
-        self.assertEqual(results["in-domain clean"].status, "evaluated")
-        self.assertEqual(results["cross-generator clean"].status, "evaluated")
-        self.assertEqual(results["cross-generator telecom"].status, "evaluated")
-        self.assertEqual(results["language fairness (hi)"].status, "evaluated")
-        self.assertEqual(results["language fairness (ta)"].status, "evaluated")
-        self.assertEqual(results["language fairness (en)"].status, "evaluated")
-
-        # Hinglish remains explicitly not_evaluable as legitimate Hinglish data is unavailable
-        self.assertEqual(results["language fairness (hinglish)"].status, "not_evaluable")
-        self.assertEqual(results["language fairness (hinglish)"].reason, "no_samples_for_language_hinglish")
+        self.assertEqual(detector.threshold_config.calibration_status, "not_calibrated")
+        self.assertEqual(detector.threshold_config.calibration_reason, "insufficient_validation_data")

@@ -1,24 +1,20 @@
 {
   "model_version": "phase4-baseline",
   "weights": [
-    1.016963041814753e-05,
-    0.035529008046875026,
-    0.01987725916503846,
-    -0.26094004603529664
+    -6.867251874627686e-05,
+    -0.04333400794025018,
+    0.02679588937058458,
+    -0.10785270430566943
   ],
-  "bias": -0.030570935622104528,
-  "temperature": 0.2,
+  "bias": -0.5039159162652739,
+  "temperature": 1.0,
   "calibration_config": {
-    "temperature": 0.2,
-    "calibration_status": "calibrated",
-    "calibration_reason": null,
-    "operating_point_thresholds": {
-      "fpr_0.1%": 0.386795,
-      "fpr_1%": 0.386795,
-      "fpr_5%": 0.386795
-    },
-    "low_threshold": 0.320174,
-    "high_threshold": 0.386795,
+    "temperature": 1.0,
+    "calibration_status": "not_calibrated",
+    "calibration_reason": "insufficient_validation_data",
+    "operating_point_thresholds": null,
+    "low_threshold": null,
+    "high_threshold": null,
     "target_operating_point": "fpr_1%"
   },
   "config": {
