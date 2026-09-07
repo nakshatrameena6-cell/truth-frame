@@ -1,0 +1,38 @@
+{
+  "model_version": "phase8-expanded-10d-baseline",
+  "weights": [
+    0.002360368399978244,
+    0.24473379428176956,
+    0.04016462203756136,
+    -0.009809725461663643,
+    0.012251624072508587,
+    -0.006542111929955405,
+    -0.10389012139689766,
+    -0.07646690796604388,
+    0.016481141325655996,
+    -0.05309107478861903
+  ],
+  "bias": 0.32101540654663585,
+  "temperature": 10.0,
+  "calibration_config": {
+    "temperature": 10.0,
+    "calibration_status": "calibrated",
+    "calibration_reason": null,
+    "operating_point_thresholds": {
+      "fpr_0.1%": 0.508506,
+      "fpr_1%": 0.508506,
+      "fpr_5%": 0.508506
+    },
+    "low_threshold": 0.498506,
+    "high_threshold": 0.508506,
+    "target_operating_point": "fpr_1%"
+  },
+  "config": {
+    "corpus_commit": "cc6fc18a2724e296a2aad3f3fedc706e30a1ae7a",
+    "epochs": 20,
+    "lr": 0.01,
+    "seed": 42,
+    "target_operating_point": "fpr_1%",
+    "num_features": 10
+  }
+}
