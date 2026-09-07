@@ -30,7 +30,7 @@ class AudioDetector:
     def __init__(
         self,
         model_version: str = "phase0-untrained",
-        weights: tuple = (0.0, 0.0, 0.0, 0.0),
+        weights: tuple = (0.0,) * 10,
         bias: float = 0.0,
         temperature: float = 1.0,
         threshold_config: ThresholdConfig | None = None,

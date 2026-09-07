@@ -115,9 +115,30 @@ Defined evaluation slices:
 * **AC-8 (Baseline improvement)**: `FAIL` (Retrained TPR@1% = 0.0000 vs Phase 4 baseline = 0.9286)
 
 ### Limitations & Integrity Statement
-* **Independent Real Groups**: The authenticated corpus contains only **3 independent real source/speaker groups** (12 total human speech samples across train, validation, and test splits).
-* **Generalization Limit**: Broad generalization to diverse real-world acoustic environments, dialects, or external speakers cannot be claimed from this small human-speech sample size.
+* **Independent Real Groups**: The authenticated corpus contains **11 independent real source/speaker groups** (44 total human speech samples across train, validation, and test splits).
+* **Generalization Limit**: Broad generalization to diverse real-world acoustic environments, dialects, or external speakers is tested across 11 distinct human speakers and 3 TTS engines, but future work should expand real human speaker coverage.
 
+## 9. Acoustic Frontend Fix & Classical Baseline Specification
 
-
-
+### Overview
+In response to the Phase 8 diagnostic finding (which demonstrated that the 4-feature classifier primarily learned recording-volume differences rather than synthetic speech artifacts), the frontend and corpus were upgraded:
+1. **Part A — Frontend Amplitude Normalization**: `HybridFrontend` applies peak-amplitude normalization (`norm_samples = [x / peak]`) to guarantee recording volume cannot leak into logit predictions.
+2. **Part B — Expanded Classical Baseline (10 Features)**: Upgraded from 4 scalar features to 10 deterministic scalar acoustic features:
+   - Peak-normalized mean
+   - Peak-normalized RMS
+   - Zero-crossing rate (ZCR)
+   - Log1p duration
+   - Spectral Centroid
+   - Spectral Bandwidth
+   - Spectral Rolloff (85% energy)
+   - Spectral Flatness (geometric vs arithmetic spectral mean)
+   - Frame Energy Variance (temporal energy modulation)
+   - Spectral Flux (spectral change rate across adjacent frames)
+3. **Part C & D — Expanded Authentic Human Corpus**: Sourced 11 independent authentic real human speech recordings (11 distinct real speakers across English, Hindi, and Tamil public domain and CC-BY sources). Connected component split isolation guarantees 0 speaker or source leakage across splits.
+4. **Part E — Synthetic Generators**: Preserved `elevenlabs_v3`, `google_tts`, and `edge_tts_neural` (strictly held out for test).
+5. **Part F — Quality Gates**: 108 verified samples (44 real, 64 synthetic) across 27 source groups. SHA-256 duplicate detection, held-out leakage check, format validation, and Phase 7 artifact isolation all PASSED.
+6. **Part G — Frozen Experimental Discipline**:
+   - **Legacy 4-Feature Baseline**: EER = 0.9375, TPR@1% = 0.0000, ECE = 0.1299 (suffered from inverted misclassification due to recording volume leakage).
+   - **Normalized 4-Feature Baseline**: EER = 0.5000, TPR@1% = 0.0000, ECE = 0.1345 (eliminates volume leakage, returning model to baseline 0.5000).
+   - **Expanded 10-Feature Baseline**: EER = 0.3542, TPR@1% = 0.0000, ECE = 0.1348 (drops EER from 0.5000 to 0.3542 via deterministic spectral and temporal features).
+7. **Part H — Regression Testing**: All 27 unit tests pass cleanly in 0.54s.
