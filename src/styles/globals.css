@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-app: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-surface-elevated: #f1f5f9;
+    --bg-surface-hover: #f1f5f9;
+    --bg-surface-active: #e2e8f0;
+    
+    --border-subtle: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --border-focus: #0d9488;
+    
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --text-inv: #ffffff;
+    
+    --accent-brand: #0d9488;
+    --accent-brand-hover: #0f766e;
+    --accent-brand-subtle: rgba(13, 148, 136, 0.08);
+    
+    --verdict-human: #059669;
+    --verdict-human-bg: rgba(5, 150, 105, 0.08);
+    --verdict-human-border: rgba(5, 150, 105, 0.25);
+    
+    --verdict-inconclusive: #d97706;
+    --verdict-inconclusive-bg: rgba(217, 119, 6, 0.08);
+    --verdict-inconclusive-border: rgba(217, 119, 6, 0.25);
+    
+    --verdict-synthetic: #e11d48;
+    --verdict-synthetic-bg: rgba(225, 29, 72, 0.08);
+    --verdict-synthetic-border: rgba(225, 29, 72, 0.25);
+  }
+
+  .dark {
+    --bg-app: #080c11;
+    --bg-surface: #0f1722;
+    --bg-surface-elevated: #16202e;
+    --bg-surface-hover: #1b2738;
+    --bg-surface-active: #223045;
+    
+    --border-subtle: #1e2a3b;
+    --border-strong: #2d3d54;
+    --border-focus: #14b8a6;
+    
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-dim: #64748b;
+    --text-inv: #0f172a;
+    
+    --accent-brand: #14b8a6;
+    --accent-brand-hover: #2dd4bf;
+    --accent-brand-subtle: rgba(20, 184, 166, 0.12);
+    
+    --verdict-human: #10b981;
+    --verdict-human-bg: rgba(16, 185, 129, 0.12);
+    --verdict-human-border: rgba(16, 185, 129, 0.3);
+    
+    --verdict-inconclusive: #f59e0b;
+    --verdict-inconclusive-bg: rgba(245, 158, 11, 0.12);
+    --verdict-inconclusive-border: rgba(245, 158, 11, 0.3);
+    
+    --verdict-synthetic: #f43f5e;
+    --verdict-synthetic-bg: rgba(244, 63, 94, 0.12);
+    --verdict-synthetic-border: rgba(244, 63, 94, 0.3);
+  }
+}
+
+/* Custom scrollbars & subtle utility styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
+/* Focus styles for keyboard accessibility */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
