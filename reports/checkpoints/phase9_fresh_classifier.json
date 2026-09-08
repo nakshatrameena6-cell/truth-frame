@@ -1,0 +1,40 @@
+{
+  "model_version": "phase9-fresh-classifier",
+  "weights": [
+    0.0010723913777344234,
+    0.12270209480098652,
+    0.017377743949922333,
+    -0.12243281708489702,
+    0.00014843650029678452,
+    -0.01195005033521512,
+    -0.07152080423310593,
+    -0.055450842804437565,
+    0.006567175674301605,
+    -0.033135000825014756
+  ],
+  "bias": 0.14012822394559618,
+  "scale": 0.23108484700788168,
+  "shift": -1.112100455596939,
+  "calibration_config": {
+    "temperature": null,
+    "scale": 0.23108484700788168,
+    "shift": -1.112100455596939,
+    "calibration_status": "calibrated",
+    "calibration_reason": null,
+    "operating_point_thresholds": {
+      "fpr_0.1%": 0.25196,
+      "fpr_1%": 0.25196,
+      "fpr_5%": 0.251423
+    },
+    "low_threshold": 0.24196,
+    "high_threshold": 0.25196,
+    "target_operating_point": "fpr_1%"
+  },
+  "config": {
+    "corpus_commit": "199bb34ec85f52ee8352113930e99e28678284de",
+    "epochs": 10,
+    "lr": 0.01,
+    "seed": 42,
+    "target_operating_point": "fpr_1%"
+  }
+}
