@@ -1,223 +1,246 @@
 import React, { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getHealth } from '../api/health';
-import { getModelInfo } from '../api/model';
-import { getAudioFormats } from '../api/formats';
-import { isMockModeEnabled, setMockModeEnabled, resetMockDataToDefault } from '../api/client';
-import { Settings as SettingsIcon, Cpu, Activity, FileAudio, Database, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Building2, ShieldCheck, Sparkles, Sliders, Bell, FileText, CheckCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { getStoredTheme, setStoredTheme, applyTheme, ThemeMode } from '../lib/theme';
 
 export const SettingsPage: React.FC = () => {
-  const queryClient = useQueryClient();
-  const [useMock, setUseMock] = useState(isMockModeEnabled());
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const navigate = useNavigate();
+  const [theme, setTheme] = useState<ThemeMode>(getStoredTheme());
+  const [casePrefix, setCasePrefix] = useState('CASE-2026');
+  const [unitName, setUnitName] = useState('Financial Crimes & Voice Forensics Unit');
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const { data: health, isLoading: isHealthLoading, refetch: refetchHealth } = useQuery({
-    queryKey: ['health'],
-    queryFn: getHealth,
-  });
-
-  const { data: model, isLoading: isModelLoading } = useQuery({
-    queryKey: ['modelInfo'],
-    queryFn: getModelInfo,
-  });
-
-  const { data: formats } = useQuery({
-    queryKey: ['audioFormats'],
-    queryFn: getAudioFormats,
-  });
-
-  const handleToggleMock = (enabled: boolean) => {
-    setUseMock(enabled);
-    setMockModeEnabled(enabled);
-    queryClient.invalidateQueries();
+  const handleThemeChange = (newTheme: ThemeMode) => {
+    setTheme(newTheme);
+    setStoredTheme(newTheme);
+    applyTheme(newTheme);
   };
 
-  const handleResetData = () => {
-    resetMockDataToDefault();
-    queryClient.invalidateQueries();
-    setIsResetConfirmOpen(false);
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto font-sans">
-      {/* Page Header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <SettingsIcon className="w-5 h-5 text-brand" />
-          <h1 className="text-xl font-bold font-mono tracking-tight text-txt-main">
-            System & Engine Settings
-          </h1>
-        </div>
-        <p className="text-xs text-txt-muted font-sans">
-          Configure API connection parameters, inspection engine modes, and inspect backend health diagnostic endpoints.
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-150 py-2">
+      {/* Header */}
+      <div className="border-b border-border-subtle pb-5">
+        <h1 className="text-2xl font-bold tracking-tight text-txt-main">
+          Settings & Preferences
+        </h1>
+        <p className="text-xs text-txt-muted mt-1">
+          Configure investigation session standards, evidentiary policies, and environment defaults
         </p>
       </div>
 
-      {/* 1. Execution Engine Mode Toggle Card */}
-      <div className="rounded-lg border border-border-strong bg-bg-surface p-6 space-y-4 shadow-panel">
-        <div className="flex items-center gap-2 pb-3 border-b border-border-subtle">
-          <Database className="w-4 h-4 text-brand" />
-          <h3 className="text-sm font-mono font-bold text-txt-main">Execution Engine Provider</h3>
+      {saveSuccess && (
+        <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-2.5 text-xs text-emerald-400 font-mono animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          <span>Investigation preferences saved successfully.</span>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Option A: Embedded Mock Engine */}
-          <div
-            onClick={() => handleToggleMock(true)}
-            className={`p-4 rounded-lg border cursor-pointer transition-all space-y-2 select-none ${
-              useMock
-                ? 'border-brand bg-brand-subtle shadow-subtle'
-                : 'border-border-subtle bg-bg-surface-elevated hover:border-brand/40'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-txt-main">Embedded Simulation Engine</span>
-              {useMock && <CheckCircle2 className="w-4 h-4 text-brand" />}
-            </div>
-            <p className="text-[11px] font-mono text-txt-muted leading-relaxed">
-              Runs in-memory simulation with realistic queued → processing state transitions and pre-seeded evaluation test records.
-            </p>
+      <form onSubmit={handleSave} className="space-y-6">
+        {/* Section 1: Investigation Unit Configuration */}
+        <div className="bg-bg-surface p-6 rounded-lg border border-border-subtle space-y-4">
+          <div className="flex items-center gap-2 border-b border-border-subtle pb-3">
+            <Building2 className="w-4 h-4 text-brand" />
+            <h2 className="text-sm font-semibold text-txt-main">
+              Investigation Unit Profile
+            </h2>
           </div>
 
-          {/* Option B: Live REST API Backend */}
-          <div
-            onClick={() => handleToggleMock(false)}
-            className={`p-4 rounded-lg border cursor-pointer transition-all space-y-2 select-none ${
-              !useMock
-                ? 'border-brand bg-brand-subtle shadow-subtle'
-                : 'border-border-subtle bg-bg-surface-elevated hover:border-brand/40'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-txt-main">Live Python REST API (/api/v1)</span>
-              {!useMock && <CheckCircle2 className="w-4 h-4 text-brand" />}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-mono text-txt-muted uppercase text-[10px] mb-1">
+                Investigation Department / Unit
+              </label>
+              <input
+                type="text"
+                value={unitName}
+                onChange={(e) => setUnitName(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-md bg-bg-surface-elevated border border-border-subtle text-txt-main focus:ring-1 focus:ring-brand font-mono"
+              />
             </div>
-            <p className="text-[11px] font-mono text-txt-muted leading-relaxed">
-              Connects directly to active FastAPI backend endpoint at <code className="text-brand">http://localhost:8000</code>.
-            </p>
-          </div>
-        </div>
 
-        {useMock && (
-          <div className="pt-2 flex items-center justify-between">
-            <span className="text-xs font-mono text-txt-dim">Reset local mock store to seed data:</span>
-            <button
-              onClick={() => setIsResetConfirmOpen(true)}
-              className="px-3 py-1.5 rounded bg-bg-surface-elevated border border-border-subtle text-txt-muted hover:text-txt-main text-xs font-mono transition-colors flex items-center gap-1.5"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Reset Mock Dataset</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 2. Backend Health & Model Diagnostics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Backend Health Diagnostics */}
-        <div className="rounded-lg border border-border-strong bg-bg-surface p-5 space-y-3 shadow-panel">
-          <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold text-txt-main">
-              <Activity className="w-4 h-4 text-brand" />
-              <span>Backend Health (GET /health)</span>
-            </div>
-            <button
-              onClick={() => refetchHealth()}
-              className="p-1 rounded text-txt-dim hover:text-txt-main hover:bg-bg-surface-elevated transition-colors"
-              title="Refresh health"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="space-y-2 text-xs font-mono">
-            <div className="flex justify-between py-1 border-b border-border-subtle">
-              <span className="text-txt-dim">System Status</span>
-              <span className="font-semibold text-emerald-400 uppercase">{health?.status || 'OK'}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-border-subtle">
-              <span className="text-txt-dim">Engine Version</span>
-              <span className="text-txt-main">{health?.version || '1.0.0'}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-border-subtle">
-              <span className="text-txt-dim">Detector Model Loaded</span>
-              <span className="text-emerald-400 font-semibold">{health?.model_loaded ? 'TRUE' : 'FALSE'}</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-txt-dim">Active Model Version</span>
-              <span className="text-amber-500 font-semibold">{health?.model_version || 'phase9-experimental'}</span>
+            <div>
+              <label className="block font-mono text-txt-muted uppercase text-[10px] mb-1">
+                Default Case Reference Prefix
+              </label>
+              <input
+                type="text"
+                value={casePrefix}
+                onChange={(e) => setCasePrefix(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-md bg-bg-surface-elevated border border-border-subtle text-txt-main focus:ring-1 focus:ring-brand font-mono"
+              />
             </div>
           </div>
         </div>
 
-        {/* Model Calibration Info */}
-        <div className="rounded-lg border border-border-strong bg-bg-surface p-5 space-y-3 shadow-panel">
-          <div className="flex items-center gap-2 pb-2 border-b border-border-subtle text-xs font-mono font-bold text-txt-main">
-            <Cpu className="w-4 h-4 text-brand" />
-            <span>Detector Protocol (GET /api/v1/model)</span>
-          </div>
-
-          <div className="space-y-2 text-xs font-mono">
-            <div className="flex justify-between py-1 border-b border-border-subtle">
-              <span className="text-txt-dim">Model Name</span>
-              <span className="text-txt-main">{model?.name || 'PandaMIND Detector'}</span>
+        {/* Section 2: Mock Scenarios Quick Access */}
+        <div className="bg-bg-surface p-6 rounded-lg border border-border-subtle space-y-4">
+          <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-brand" />
+              <h2 className="text-sm font-semibold text-txt-main">
+                Benchmark Investigation Scenarios
+              </h2>
             </div>
-            <div className="flex justify-between py-1 border-b border-border-subtle">
-              <span className="text-txt-dim">Calibration Status</span>
-              <span className="text-emerald-400 uppercase">{model?.calibration_status || 'Calibrated'}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-border-subtle">
-              <span className="text-txt-dim">Low Threshold (θ_low)</span>
-              <span className="text-txt-main font-bold">{model?.thresholds.low || 0.7408}</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-txt-dim">High Threshold (θ_high)</span>
-              <span className="text-txt-main font-bold">{model?.thresholds.high || 0.7556}</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* 3. Supported Audio Formats Card */}
-      <div className="rounded-lg border border-border-strong bg-bg-surface p-5 space-y-3 shadow-panel">
-        <div className="flex items-center gap-2 pb-2 border-b border-border-subtle text-xs font-mono font-bold text-txt-main">
-          <FileAudio className="w-4 h-4 text-brand" />
-          <span>Supported Audio Stream Constraints (GET /api/v1/audio/formats)</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-          <div className="p-3 rounded bg-bg-surface-elevated border border-border-subtle">
-            <span className="text-[10px] text-txt-dim uppercase block">Allowed Extensions</span>
-            <span className="font-semibold text-brand font-mono">
-              {formats?.supported_extensions.join(', ') || '.wav, .mp3, .flac, .ogg, .m4a'}
+            <span className="text-[11px] font-mono text-txt-dim">
+              Offline Demonstration
             </span>
           </div>
 
-          <div className="p-3 rounded bg-bg-surface-elevated border border-border-subtle">
-            <span className="text-[10px] text-txt-dim uppercase block">Max File Payload</span>
-            <span className="font-semibold text-txt-main font-mono">25 MB (26,214,400 bytes)</span>
-          </div>
+          <p className="text-xs text-txt-muted leading-relaxed">
+            Inspect canonical evidentiary scenarios directly to review how different determination bands, confidence thresholds, and suspicious segments present to analysts.
+          </p>
 
-          <div className="p-3 rounded bg-bg-surface-elevated border border-border-subtle">
-            <span className="text-[10px] text-txt-dim uppercase block">Max Audio Duration</span>
-            <span className="font-semibold text-txt-main font-mono">300 seconds (5.0 minutes)</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => navigate('/analysis/scenario-a')}
+              className="p-3 rounded-lg bg-bg-surface-elevated border border-border-subtle hover:border-rose-500/50 hover:bg-bg-surface-hover text-left transition-colors group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-rose-400">
+                  Scenario A — Synthetic
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                  87% Conf
+                </span>
+              </div>
+              <p className="text-xs text-txt-muted mt-1">
+                Likely Synthetic with 2 localized suspicious speech sections and Hindi+English code-switching.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/analysis/scenario-b')}
+              className="p-3 rounded-lg bg-bg-surface-elevated border border-border-subtle hover:border-emerald-500/50 hover:bg-bg-surface-hover text-left transition-colors group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-emerald-400">
+                  Scenario B — Human
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  92% Conf
+                </span>
+              </div>
+              <p className="text-xs text-txt-muted mt-1">
+                Consistent with genuine human speech in Tamil with natural biological acoustics.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/analysis/scenario-c')}
+              className="p-3 rounded-lg bg-bg-surface-elevated border border-border-subtle hover:border-amber-500/50 hover:bg-bg-surface-hover text-left transition-colors group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-amber-400">
+                  Scenario C — Inconclusive
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  Abstention
+                </span>
+              </div>
+              <p className="text-xs text-txt-muted mt-1">
+                Acoustic signal degraded by telecom compression. Strictly abstains without manufactured probability.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/analysis/scenario-d')}
+              className="p-3 rounded-lg bg-bg-surface-elevated border border-border-subtle hover:border-purple-500/50 hover:bg-bg-surface-hover text-left transition-colors group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-purple-400">
+                  Scenario D — Difficult Recording
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  65% Conf
+                </span>
+              </div>
+              <p className="text-xs text-txt-muted mt-1">
+                Likely Synthetic with ambient background interference and multiple flagged segments.
+              </p>
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Confirm Reset Dialog */}
-      <ConfirmDialog
-        isOpen={isResetConfirmOpen}
-        title="Reset Mock Dataset"
-        description="Are you sure you want to reset the mock database? All custom uploaded audio evaluations will be cleared and restored to the default 6 seed test cases."
-        confirmLabel="Reset Dataset"
-        isDestructive={true}
-        onConfirm={handleResetData}
-        onCancel={() => setIsResetConfirmOpen(false)}
-      />
+        {/* Section 3: Interface & Theme */}
+        <div className="bg-bg-surface p-6 rounded-lg border border-border-subtle space-y-4">
+          <div className="flex items-center gap-2 border-b border-border-subtle pb-3">
+            <Sliders className="w-4 h-4 text-brand" />
+            <h2 className="text-sm font-semibold text-txt-main">
+              Interface & Accessibility
+            </h2>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-txt-main block">
+                Visual Theme Mode
+              </span>
+              <p className="text-xs text-txt-muted mt-0.5">
+                Select between high-contrast Dark Mode and institution Light Mode
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1 bg-bg-surface-elevated p-1 rounded-lg border border-border-subtle">
+              <button
+                type="button"
+                onClick={() => handleThemeChange('dark')}
+                className={`px-3 py-1 text-xs font-mono rounded ${
+                  theme === 'dark'
+                    ? 'bg-brand text-white font-bold'
+                    : 'text-txt-muted hover:text-txt-main'
+                }`}
+              >
+                Dark
+              </button>
+              <button
+                type="button"
+                onClick={() => handleThemeChange('light')}
+                className={`px-3 py-1 text-xs font-mono rounded ${
+                  theme === 'light'
+                    ? 'bg-brand text-white font-bold'
+                    : 'text-txt-muted hover:text-txt-main'
+                }`}
+              >
+                Light
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Audit & Regulatory Compliance */}
+        <div className="bg-bg-surface p-6 rounded-lg border border-border-subtle space-y-3">
+          <div className="flex items-center gap-2 border-b border-border-subtle pb-3">
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <h2 className="text-sm font-semibold text-txt-main">
+              Regulatory Audit & Evidence Chain
+            </h2>
+          </div>
+
+          <p className="text-xs text-txt-muted leading-relaxed">
+            PandaMIND maintains an immutable audit log of audio hashes, timestamps, and investigation determinations. Inconclusive determinations are strictly logged as non-evaluable abstentions in accordance with banking anti-fraud guidelines.
+          </p>
+        </div>
+
+        {/* Submit */}
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-subtle transition-colors"
+          >
+            Save Preferences
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

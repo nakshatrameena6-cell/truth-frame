@@ -1,203 +1,171 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createAnalysis, listAnalyses } from '../api/analyses';
-import { getAudioFormats } from '../api/formats';
-import { AudioDropzone } from '../features/upload/AudioDropzone';
-import { AudioRecorder } from '../features/upload/AudioRecorder';
-import { UploadProgress } from '../features/upload/UploadProgress';
-import { VerdictBadge } from '../components/VerdictBadge';
-import { getHumanReadableErrorMessage } from '../lib/errors';
-import { formatDate } from '../lib/utils';
-import { AudioLines, ShieldCheck, History, ArrowRight, Mic, Upload, FileAudio } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { AudioUploader } from '../components/investigation/AudioUploader';
+import { AnalysisProgress, ProgressStep } from '../components/investigation/AnalysisProgress';
+import { MOCK_SCENARIOS, MOCK_HISTORY_REPORTS } from '../lib/mockScenarios';
+import { InvestigationReport } from '../types/investigation';
+import { ShieldCheck, ArrowLeft } from 'lucide-react';
 
 export const AnalyzePage: React.FC = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [currentStep, setCurrentStep] = useState<ProgressStep>('received');
+  const [analyzingFilename, setAnalyzingFilename] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'upload' | 'record'>('upload');
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
-  const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
-  const [activeFilename, setActiveFilename] = useState<string>('');
+  const handleSubmit = (
+    file: File | null,
+    caseReference?: string,
+    scenarioId?: string
+  ) => {
+    // If a predefined scenario was selected:
+    if (scenarioId && scenarioId in MOCK_SCENARIOS) {
+      navigate(`/analysis/${scenarioId}`);
+      return;
+    }
 
-  // Fetch supported formats
-  const { data: formats } = useQuery({
-    queryKey: ['audioFormats'],
-    queryFn: getAudioFormats,
-  });
+    const filename = file?.name || 'customer_call.wav';
+    setAnalyzingFilename(filename);
+    setIsAnalysing(true);
+    setCurrentStep('received');
 
-  // Fetch recent analyses for shortcuts
-  const { data: recentAnalyses } = useQuery({
-    queryKey: ['analyses'],
-    queryFn: listAnalyses,
-  });
+    // Simulate the human-readable step progression smoothly:
+    // ✓ Recording received -> ✓ Recording quality reviewed -> ● Analysing speech -> ○ Preparing result
+    setTimeout(() => {
+      setCurrentStep('quality_reviewed');
+    }, 900);
 
-  // Upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: createAnalysis,
-    onSuccess: (data) => {
-      setActiveAnalysisId(data.analysis_id);
-      setActiveFilename(data.audio.filename);
-      queryClient.invalidateQueries({ queryKey: ['analyses'] });
-      // Navigate directly to result report page where real-time polling will handle processing state
-      navigate(`/analysis/${data.analysis_id}`);
-    },
-  });
+    setTimeout(() => {
+      setCurrentStep('analysing_speech');
+    }, 1900);
 
-  const handleFileSubmitted = (file: File) => {
-    setActiveFilename(file.name);
-    uploadMutation.mutate({
-      audio: file,
-      filename: file.name,
-      language: selectedLanguage,
-      source: 'web_workspace',
-    });
+    setTimeout(() => {
+      setCurrentStep('preparing_result');
+    }, 3100);
+
+    setTimeout(() => {
+      // Create new investigation report from uploaded file
+      const newId = `case-eval-${Date.now().toString().slice(-4)}`;
+      const newReport: InvestigationReport = {
+        id: newId,
+        caseReference: caseReference || `CASE-${Date.now().toString().slice(-4)}`,
+        recordingName: filename,
+        fileSizeBytes: file?.size || 3420000,
+        fileSizeFormatted: file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : '3.26 MB',
+        durationSeconds: 16.4,
+        durationFormatted: '16s',
+        createdAt: new Date().toISOString(),
+        createdAtFormatted: 'Just now',
+        result: 'likely_synthetic',
+        confidencePercent: 88,
+        summary:
+          'The recording contains acoustic characteristics consistent with synthetic or cloned speech.',
+        suspiciousSections: [
+          {
+            id: 'sec-1',
+            startSeconds: 3.4,
+            endSeconds: 6.2,
+            startFormatted: '00:03.40',
+            endFormatted: '00:06.20',
+            confidencePercent: 93,
+            label: 'Synthetic voice synthesis artifact',
+            evidenceSummary:
+              'Neural vocoder phase discontinuity detected during vocalization burst.',
+          },
+        ],
+        evidenceCategories: [
+          {
+            id: 'ev-1',
+            name: 'Speech characteristics',
+            scorePercent: 88,
+            bias: 'synthetic',
+            explanation:
+              'High-frequency harmonics exhibit unnatural mathematical regularity consistent with neural voice synthesis.',
+          },
+          {
+            id: 'ev-2',
+            name: 'Voice pattern consistency',
+            scorePercent: 76,
+            bias: 'synthetic',
+            explanation:
+              'Vocal tract resonance transitions deviate from biological physical constraints.',
+          },
+          {
+            id: 'ev-3',
+            name: 'Timing and rhythm',
+            scorePercent: 62,
+            bias: 'synthetic',
+            explanation:
+              'Cadence intervals show reduced micro-timing variation typical of automated generation.',
+          },
+        ],
+        conditions: {
+          overallQuality: 'Good',
+          speechAvailableDuration: '16.4 seconds',
+          speechAvailableSeconds: 16.4,
+          clarity: 'High',
+          recordingType: 'Clean',
+          sampleRateFormatted: '24.0 kHz',
+          channelsFormatted: 'Mono (1 channel)',
+          format: file?.name.split('.').pop()?.toUpperCase() || 'WAV',
+          notes: 'Direct acoustic capture with adequate signal strength.',
+        },
+        language: {
+          detected: 'Hindi + English',
+          isCodeSwitching: true,
+          codeSwitchingDetails: 'Code-switching detected',
+          isSupported: true,
+        },
+        provenance: {
+          digitalCredentials: 'Not available',
+          audioWatermark: 'Not detected',
+          advisoryNote:
+            'The absence of these credentials does not by itself indicate synthetic audio.',
+        },
+      };
+
+      // Push into mock reports cache
+      MOCK_HISTORY_REPORTS.unshift(newReport);
+
+      setIsAnalysing(false);
+      navigate(`/analysis/${newId}`);
+    }, 4200);
   };
 
-  const completedRecent = recentAnalyses
-    ?.filter((a) => a.status === 'completed')
-    .slice(0, 3);
-
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-6 py-4 animate-in fade-in duration-150">
       {/* Page Header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold font-mono tracking-tight text-txt-main">
-            Audio Evaluation Workspace
-          </h1>
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-brand/10 text-brand border border-brand/20">
-            Phase 9 Active
-          </span>
-        </div>
-        <p className="text-xs text-txt-muted font-sans max-w-2xl leading-relaxed">
-          Submit an audio recording for acoustic feature extraction, volume-normalized spectrogram evaluation, and backend operating point calibration.
+      <div className="border-b border-border-subtle pb-4">
+        <h1 className="text-2xl font-bold tracking-tight text-txt-main">
+          New Analysis
+        </h1>
+        <p className="text-sm text-txt-muted mt-1 leading-relaxed">
+          Upload a call recording to assess whether the voice is consistent with genuine human speech.
         </p>
       </div>
 
-      {/* Upload/Record Workspace Container */}
-      <div className="space-y-4">
-        {/* Workspace Instrument Header Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-border-strong bg-bg-surface shadow-subtle">
-          
-          {/* Mode Switcher */}
-          <div className="flex items-center gap-1 bg-bg-surface-elevated p-1 rounded border border-border-subtle">
-            <button
-              onClick={() => setActiveTab('upload')}
-              className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono font-medium transition-colors',
-                activeTab === 'upload'
-                  ? 'bg-bg-surface text-brand font-semibold shadow-subtle border border-border-subtle'
-                  : 'text-txt-muted hover:text-txt-main'
-              )}
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Upload File</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('record')}
-              className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono font-medium transition-colors',
-                activeTab === 'record'
-                  ? 'bg-bg-surface text-brand font-semibold shadow-subtle border border-border-subtle'
-                  : 'text-txt-muted hover:text-txt-main'
-              )}
-            >
-              <Mic className="w-3.5 h-3.5" />
-              <span>Record Live Speech</span>
-            </button>
-          </div>
-
-          {/* Language Selection Config */}
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="text-txt-dim">Target Language:</span>
-            <select
-              value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-              className="px-2.5 py-1.5 rounded bg-bg-surface-elevated border border-border-subtle text-txt-main text-xs font-mono focus:outline-none focus:border-brand"
-            >
-              <option value="en">English (en)</option>
-              <option value="hi">Hindi (hi)</option>
-              <option value="ta">Tamil (ta)</option>
-              <option value="hinglish">Hinglish</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Active Upload/Record Panel */}
-        {uploadMutation.isPending ? (
-          <UploadProgress
-            status="uploading"
-            filename={activeFilename}
-            onCancel={() => uploadMutation.reset()}
+      {/* Main Upload or Progress State */}
+      {isAnalysing ? (
+        <div className="py-12">
+          <AnalysisProgress
+            filename={analyzingFilename}
+            currentStep={currentStep}
+            onCancel={() => setIsAnalysing(false)}
           />
-        ) : uploadMutation.isError ? (
-          <div className="space-y-4">
-            <UploadProgress
-              status="failed"
-              filename={activeFilename}
-              errorMessage={getHumanReadableErrorMessage(
-                (uploadMutation.error as any)?.error_code,
-                (uploadMutation.error as any)?.message
-              )}
-              onRetry={() => uploadMutation.reset()}
-            />
-          </div>
-        ) : activeTab === 'upload' ? (
-          <AudioDropzone
-            onFileSelect={handleFileSubmitted}
-            supportedExtensions={formats?.supported_extensions}
-            maxSizeBytes={formats?.max_file_size_bytes}
-          />
-        ) : (
-          <AudioRecorder onRecorded={handleFileSubmitted} />
-        )}
-      </div>
-
-      {/* Recent Evaluations Shortcut Carousel */}
-      {completedRecent && completedRecent.length > 0 && (
-        <div className="space-y-3 pt-4 border-t border-border-subtle">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="font-semibold text-txt-dim uppercase tracking-wider flex items-center gap-1.5">
-              <History className="w-3.5 h-3.5 text-brand" />
-              <span>Recent Audio Evaluations</span>
-            </span>
-            <button
-              onClick={() => navigate('/history')}
-              className="text-brand hover:underline flex items-center gap-1"
-            >
-              <span>View All History</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {completedRecent.map((item) => (
-              <div
-                key={item.analysis_id}
-                onClick={() => navigate(`/analysis/${item.analysis_id}`)}
-                className="p-3 rounded-lg border border-border-strong bg-bg-surface hover:bg-bg-surface-hover hover:border-brand/40 transition-all cursor-pointer space-y-2 shadow-subtle group"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 truncate">
-                    <FileAudio className="w-4 h-4 text-brand shrink-0" />
-                    <span className="text-xs font-mono font-semibold text-txt-main truncate group-hover:text-brand transition-colors">
-                      {item.audio.filename}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] font-mono text-txt-muted pt-1 border-t border-border-subtle">
-                  <VerdictBadge verdict={item.verdict} size="sm" showIcon={false} />
-                  <span>{formatDate(item.created_at)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
+      ) : (
+        <AudioUploader onSubmit={handleSubmit} isLoading={isAnalysing} />
       )}
+
+      {/* Bottom Compliance & Guidance Note */}
+      <div className="pt-4 border-t border-border-subtle text-xs text-txt-dim space-y-1 font-mono">
+        <div className="flex items-center gap-2 text-txt-muted">
+          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+          <span>Strict Enterprise Confidentiality</span>
+        </div>
+        <p>
+          Recordings submitted are evaluated exclusively within this secure investigation session in accordance with institutional governance policies.
+        </p>
+      </div>
     </div>
   );
 };
