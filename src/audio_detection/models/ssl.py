@@ -5,14 +5,27 @@ Extracts deterministic 768-dimensional embeddings using facebook/wav2vec2-base.
 from __future__ import annotations
 
 import numpy as np
-import torch
-from transformers import AutoFeatureExtractor, AutoModel
+
+try:
+    import torch
+    from transformers import AutoFeatureExtractor, AutoModel
+    HAS_SSL_DEPS = True
+except ImportError:
+    torch = None
+    AutoFeatureExtractor = None
+    AutoModel = None
+    HAS_SSL_DEPS = False
 
 
 class Wav2Vec2SSLEmbedder:
     """Deterministic, offline SSL feature extractor based on Wav2Vec2."""
 
     def __init__(self, model_name: str = "facebook/wav2vec2-base", local_dir: str | None = None):
+        if not HAS_SSL_DEPS:
+            raise ImportError(
+                "transformers and torch are required for Wav2Vec2SSLEmbedder. "
+                "Please install them via `pip install transformers torch`."
+            )
         self.model_name = model_name
         self.local_dir = local_dir
 

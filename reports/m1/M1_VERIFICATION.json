@@ -1,0 +1,23 @@
+{
+  "milestone": "M1",
+  "status": "PASS",
+  "timestamp": "2026-09-19T15:27:40+05:30",
+  "m1_tests_total": 15,
+  "m1_tests_passed": 15,
+  "m1_tests_failed": 0,
+  "m1_tests_skipped": 0,
+  "repository_tests_total": 65,
+  "repository_tests_passed": 57,
+  "repository_tests_failed": 0,
+  "repository_tests_skipped": 8,
+  "smoke_test": "PASS",
+  "smoke_test_latency_ms": 27.74,
+  "determinism_test": "PASS",
+  "provenance_safety_test": "PASS",
+  "clean_install": "PASS",
+  "frontend_modified": false,
+  "model_version": "m1-stub",
+  "threshold_version": "thr-2026-09-01",
+  "blocking_issues": [],
+  "report": "reports/m1/M1_REPORT.md"
+}

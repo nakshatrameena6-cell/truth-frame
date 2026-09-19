@@ -26,6 +26,10 @@ class TestSSLEmbedder(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        try:
+            from transformers import AutoFeatureExtractor
+        except ImportError:
+            raise unittest.SkipTest("transformers not installed; skipping live Wav2Vec2 SSL tests")
         from audio_detection.models.ssl import Wav2Vec2SSLEmbedder
         cls.embedder = Wav2Vec2SSLEmbedder("facebook/wav2vec2-base")
 
@@ -113,6 +117,10 @@ class TestHybridFrontendWithSSL(unittest.TestCase):
 
     def test_hybrid_dimension(self):
         """With SSL embedder, HybridFrontend produces 778D (10 + 768)."""
+        try:
+            from transformers import AutoFeatureExtractor
+        except ImportError:
+            self.skipTest("transformers not installed")
         from audio_detection.models.frontend import HybridFrontend
         from audio_detection.models.ssl import Wav2Vec2SSLEmbedder
         ssl = Wav2Vec2SSLEmbedder("facebook/wav2vec2-base")
@@ -124,6 +132,10 @@ class TestHybridFrontendWithSSL(unittest.TestCase):
 
     def test_hybrid_deterministic(self):
         """Hybrid features must be deterministic."""
+        try:
+            from transformers import AutoFeatureExtractor
+        except ImportError:
+            self.skipTest("transformers not installed")
         from audio_detection.models.frontend import HybridFrontend
         from audio_detection.models.ssl import Wav2Vec2SSLEmbedder
         ssl = Wav2Vec2SSLEmbedder("facebook/wav2vec2-base")
