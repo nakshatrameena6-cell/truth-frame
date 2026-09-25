@@ -1,0 +1,51 @@
+{
+  "model_version": "m2-waveform-10d",
+  "weights": [
+    0.0008590128600682366,
+    0.13373648212243427,
+    0.05022901011486362,
+    -3.127477899606196,
+    0.0028488505417972997,
+    -0.05994492894382753,
+    -0.1450572303745967,
+    -0.1515637307742987,
+    0.010876175060792217,
+    -0.02624726726452554
+  ],
+  "bias": 8.943697876803856,
+  "scale": 1.5896376974244841,
+  "shift": 1.0878715226961095,
+  "calibration_config": {
+    "temperature": null,
+    "scale": 1.5896376974244841,
+    "shift": 1.0878715226961095,
+    "calibration_status": "calibrated",
+    "calibration_reason": null,
+    "operating_point_thresholds": {
+      "fpr_0.1%": 0.140351,
+      "fpr_1%": 0.140351,
+      "fpr_5%": 0.139968
+    },
+    "low_threshold": 0.130351,
+    "high_threshold": 0.140351,
+    "target_operating_point": "fpr_1%"
+  },
+  "config": {
+    "model_version": "m2-waveform-10d",
+    "feature_dimension": 10,
+    "classifier": "LogisticRegression(C=1.0)",
+    "scale": 1.5896376974244841,
+    "shift": 1.0878715226961095,
+    "thresholds": {
+      "fpr_0.1%": 0.140351,
+      "fpr_1%": 0.140351,
+      "fpr_5%": 0.139968
+    },
+    "verdict_bands": {
+      "low": 0.130351,
+      "high": 0.140351
+    },
+    "calibration_status": "calibrated",
+    "corpus": "corpus_v1"
+  }
+}

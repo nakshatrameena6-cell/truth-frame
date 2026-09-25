@@ -7,13 +7,16 @@ import numpy as np
 
 
 def _fft(x: list[complex]) -> list[complex]:
-    n = len(x)
-    if n <= 1:
-        return x
-    even = _fft(x[0::2])
-    odd = _fft(x[1::2])
-    twiddles = [cmath.exp(-2j * math.pi * k / n) * odd[k] for k in range(n // 2)]
-    return [even[k] + twiddles[k] for k in range(n // 2)] + [even[k] - twiddles[k] for k in range(n // 2)]
+    try:
+        return list(np.fft.fft(x))
+    except Exception:
+        n = len(x)
+        if n <= 1:
+            return x
+        even = _fft(x[0::2])
+        odd = _fft(x[1::2])
+        twiddles = [cmath.exp(-2j * math.pi * k / n) * odd[k] for k in range(n // 2)]
+        return [even[k] + twiddles[k] for k in range(n // 2)] + [even[k] - twiddles[k] for k in range(n // 2)]
 
 
 class WavLMXLSRFrontend:
@@ -75,33 +78,28 @@ class HybridFrontend:
         hop_size = 128
         n_samples = len(norm_samples)
 
-        frames_mags: list[list[float]] = []
-        frame_rmss: list[float] = []
-
-        # Hann window
-        window = [0.5 * (1 - math.cos(2 * math.pi * n / frame_size)) for n in range(frame_size)]
-
+        # Build 2D frame matrix
+        frames = []
         for start in range(0, max(1, n_samples - frame_size + 1), hop_size):
             chunk = norm_samples[start : start + frame_size]
             if len(chunk) < frame_size:
                 chunk = chunk + [0.0] * (frame_size - len(chunk))
+            frames.append(chunk)
 
-            # Frame RMS
-            f_rms = math.sqrt(sum(v * v for v in chunk) / frame_size)
-            frame_rmss.append(f_rms)
+        if not frames:
+            frames = [[0.0] * frame_size]
 
-            # Windowed FFT
-            windowed = [complex(v * w, 0.0) for v, w in zip(chunk, window)]
-            fft_res = _fft(windowed)
+        frames_arr = np.asarray(frames, dtype=np.float64)
+        window_arr = np.array([0.5 * (1.0 - math.cos(2 * math.pi * n / frame_size)) for n in range(frame_size)], dtype=np.float64)
 
-            # Half-spectrum magnitude
-            half_len = frame_size // 2 + 1
-            mags = [abs(fft_res[k]) for k in range(half_len)]
-            frames_mags.append(mags)
+        # Frame RMS
+        frame_rmss = np.sqrt(np.mean(frames_arr ** 2, axis=1)).tolist()
 
-        if not frames_mags:
-            frames_mags = [[1e-6] * (frame_size // 2 + 1)]
-            frame_rmss = [norm_rms]
+        # Windowed FFT (all frames in one vectorized C call)
+        windowed_arr = frames_arr * window_arr
+        fft_arr = np.fft.rfft(windowed_arr, axis=1)
+        mags_arr = np.abs(fft_arr)
+        frames_mags = mags_arr.tolist()
 
         # Aggregate spectral statistics across sub-frames
         centroids: list[float] = []

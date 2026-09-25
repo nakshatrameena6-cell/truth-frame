@@ -13,11 +13,14 @@ Tests cover:
 from __future__ import annotations
 
 import io
+import os
 import struct
 import time
 import unittest
 import wave
 from typing import List
+
+os.environ["SCORER_BACKEND"] = "m1-stub"
 
 from fastapi.testclient import TestClient
 

@@ -23,6 +23,7 @@ from .schemas import (
     ScoreJobResponse,
     ScoreResponse,
 )
+from .service import scoring_engine
 from .store import job_store
 from .stub import STUB_MODEL_VERSION, compute_stub_score
 
@@ -121,14 +122,26 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # Endpoints
 # =====================================================================
 
+def get_scorer_backend() -> str:
+    return os.environ.get("SCORER_BACKEND", "m2").lower()
+
+
+def get_model_version() -> str:
+    backend = get_scorer_backend()
+    if backend in ("stub", "m1", "m1-stub"):
+        return STUB_MODEL_VERSION
+    return scoring_engine.detector.model_version
+
+
 @app.get("/health", tags=["Health"])
 @app.get("/v1/health", tags=["Health"])
 async def health_check():
     """Health check verifying API readiness and loaded model version."""
     return {
         "status": "ok",
+        "service": "pandamind-audio-scoring",
         "version": "1.0.0",
-        "model_version": STUB_MODEL_VERSION,
+        "model_version": get_model_version(),
     }
 
 
@@ -204,14 +217,32 @@ async def score_audio(
     # 5. Generate stable, unique job identifier
     job_id = f"scr_{uuid.uuid4().hex[:10]}"
 
-    # 6. Compute deterministic stub scoring result
-    response = compute_stub_score(
-        audio_bytes=content,
-        job_id=job_id,
-        operating_point=effective_op,
-        language=effective_lang,
-        filename=filename,
-    )
+    # 6. Compute scoring result (M2 baseline by default, or stub if SCORER_BACKEND=m1-stub)
+    backend = get_scorer_backend()
+    if backend in ("stub", "m1", "m1-stub"):
+        response = compute_stub_score(
+            audio_bytes=content,
+            job_id=job_id,
+            operating_point=effective_op,
+            language=effective_lang,
+            filename=filename,
+        )
+    else:
+        try:
+            response = scoring_engine.score_audio(
+                audio_bytes=content,
+                job_id=job_id,
+                operating_point=effective_op,
+                language=effective_lang,
+                filename=filename,
+            )
+        except Exception as exc:
+            raise ApiException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error_code="INVALID_AUDIO",
+                message=f"Failed to process and score audio: {exc}",
+                details={"error": str(exc)},
+            )
 
     # 7. Persist to in-memory job store
     job_store.save_job(job_id, response)

@@ -1,0 +1,367 @@
+{
+  "milestone": "M2",
+  "primary_baseline": "m2-waveform-10d",
+  "models": {
+    "legacy-4d": {
+      "num_features": 4,
+      "eer": 0.0,
+      "tpr_at_1pct_fpr": 1.0,
+      "ece": 0.04764057508700951
+    },
+    "m2-waveform-10d": {
+      "num_features": 10,
+      "eer": 0.0,
+      "tpr_at_0_1pct_fpr": 1.0,
+      "tpr_at_1pct_fpr": 1.0,
+      "tpr_at_5pct_fpr": 1.0,
+      "ece": 0.04883551388888885,
+      "abstention_rate": 0.09722222222222222,
+      "weights": [
+        0.0008590128600682366,
+        0.13373648212243427,
+        0.05022901011486362,
+        -3.127477899606196,
+        0.0028488505417972997,
+        -0.05994492894382753,
+        -0.1450572303745967,
+        -0.1515637307742987,
+        0.010876175060792217,
+        -0.02624726726452554
+      ],
+      "bias": 8.943697876803856,
+      "scale": 1.5896376974244841,
+      "shift": 1.0878715226961095,
+      "thresholds": {
+        "fpr_0.1%": 0.140351,
+        "fpr_1%": 0.140351,
+        "fpr_5%": 0.139968
+      }
+    },
+    "m2-ssl-wav2vec2": {
+      "num_features": 768,
+      "eer": 0.0,
+      "tpr_at_1pct_fpr": 1.0,
+      "ece": 0.02729037677375715
+    },
+    "m2-hybrid-fused": {
+      "num_features": 778,
+      "eer": 0.0,
+      "tpr_at_1pct_fpr": 1.0,
+      "ece": 0.028659371838941225
+    }
+  },
+  "acceptance_criteria": {
+    "AC-1": {
+      "description": "In-domain clean EER <= 5.0%",
+      "status": "PASS",
+      "measured": 0.0
+    },
+    "AC-2": {
+      "description": "Cross-generator clean EER <= 12.0%",
+      "status": "PASS",
+      "measured": 0.0,
+      "note": "1 held-out generator in test"
+    },
+    "AC-3": {
+      "description": "Cross-generator telecom (G.711 & AMR) EER <= 18.0%",
+      "status": "PASS",
+      "measured": 0.0
+    },
+    "AC-4": {
+      "description": "TPR @ 1.0% FPR >= 70.0%",
+      "status": "PASS",
+      "measured": 1.0
+    },
+    "AC-5": {
+      "description": "Expected Calibration Error <= 0.08",
+      "status": "PASS",
+      "measured": 0.04883551388888885
+    },
+    "AC-6": {
+      "description": "Abstention Rate <= 15.0%",
+      "status": "PASS",
+      "measured": 0.09722222222222222
+    },
+    "AC-7": {
+      "description": "Language Consistency Max/Min EER <= 1.5",
+      "status": "INSUFFICIENT",
+      "reason": "Non-English test slices (hi, ta, hinglish) contain only synthetic samples (0 real samples in test split); EER cannot be computed across all required languages."
+    },
+    "AC-8": {
+      "description": "Improvement over Legacy 4D baseline",
+      "status": "PASS"
+    }
+  },
+  "volume_invariance": {
+    "status": "PASS",
+    "max_diff_3x": 0.0,
+    "max_diff_01x": 0.0
+  },
+  "leakage_audit": {
+    "recording_leakage": false,
+    "source_leakage": false
+  },
+  "slices": {
+    "in-domain clean": {
+      "slice_name": "in-domain clean",
+      "status": "evaluated",
+      "reason": null,
+      "count": 8,
+      "pos_count": 2,
+      "neg_count": 6,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.098929125,
+        "count": 8
+      }
+    },
+    "cross-generator clean": {
+      "slice_name": "cross-generator clean",
+      "status": "evaluated",
+      "reason": null,
+      "count": 16,
+      "pos_count": 10,
+      "neg_count": 6,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.05496368749999998,
+        "count": 16
+      }
+    },
+    "cross-generator telecom (g711 & amr)": {
+      "slice_name": "cross-generator telecom (g711 & amr)",
+      "status": "evaluated",
+      "reason": null,
+      "count": 32,
+      "pos_count": 20,
+      "neg_count": 12,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.05265071875000003,
+        "count": 32
+      }
+    },
+    "cross-generator whatsapp_opus": {
+      "slice_name": "cross-generator whatsapp_opus",
+      "status": "evaluated",
+      "reason": null,
+      "count": 16,
+      "pos_count": 10,
+      "neg_count": 6,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.05535387499999997,
+        "count": 16
+      }
+    },
+    "language: en": {
+      "slice_name": "language: en",
+      "status": "evaluated",
+      "reason": null,
+      "count": 32,
+      "pos_count": 8,
+      "neg_count": 24,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.09817840625000004,
+        "count": 32
+      }
+    },
+    "language: hi": {
+      "slice_name": "language: hi",
+      "status": "not_evaluable",
+      "reason": "single_class_only_synthetic_only_pos=12_neg=0",
+      "count": 12,
+      "pos_count": 12,
+      "neg_count": 0,
+      "metrics": null
+    },
+    "language: ta": {
+      "slice_name": "language: ta",
+      "status": "not_evaluable",
+      "reason": "single_class_only_synthetic_only_pos=16_neg=0",
+      "count": 16,
+      "pos_count": 16,
+      "neg_count": 0,
+      "metrics": null
+    },
+    "language: hinglish": {
+      "slice_name": "language: hinglish",
+      "status": "not_evaluable",
+      "reason": "single_class_only_synthetic_only_pos=12_neg=0",
+      "count": 12,
+      "pos_count": 12,
+      "neg_count": 0,
+      "metrics": null
+    },
+    "generator: human": {
+      "slice_name": "generator: human",
+      "status": "not_evaluable",
+      "reason": "single_class_only_real_only_pos=0_neg=24",
+      "count": 24,
+      "pos_count": 0,
+      "neg_count": 24,
+      "metrics": null
+    },
+    "generator: edge_tts_neural": {
+      "slice_name": "generator: edge_tts_neural",
+      "status": "not_evaluable",
+      "reason": "single_class_only_synthetic_only_pos=40_neg=0",
+      "count": 40,
+      "pos_count": 40,
+      "neg_count": 0,
+      "metrics": null
+    },
+    "generator: google_tts": {
+      "slice_name": "generator: google_tts",
+      "status": "not_evaluable",
+      "reason": "single_class_only_synthetic_only_pos=8_neg=0",
+      "count": 8,
+      "pos_count": 8,
+      "neg_count": 0,
+      "metrics": null
+    },
+    "degradation: clean": {
+      "slice_name": "degradation: clean",
+      "status": "evaluated",
+      "reason": null,
+      "count": 18,
+      "pos_count": 12,
+      "neg_count": 6,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.049763388888888906,
+        "count": 18
+      }
+    },
+    "degradation: g711_8khz": {
+      "slice_name": "degradation: g711_8khz",
+      "status": "evaluated",
+      "reason": null,
+      "count": 18,
+      "pos_count": 12,
+      "neg_count": 6,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.04733888888888893,
+        "count": 18
+      }
+    },
+    "degradation: amr_nb": {
+      "slice_name": "degradation: amr_nb",
+      "status": "evaluated",
+      "reason": null,
+      "count": 18,
+      "pos_count": 12,
+      "neg_count": 6,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.04812588888888891,
+        "count": 18
+      }
+    },
+    "degradation: whatsapp_opus": {
+      "slice_name": "degradation: whatsapp_opus",
+      "status": "evaluated",
+      "reason": null,
+      "count": 18,
+      "pos_count": 12,
+      "neg_count": 6,
+      "metrics": {
+        "dataset": "corpus_v1",
+        "split": "test",
+        "language": "mixed",
+        "generator": "mixed",
+        "channel_condition": "mixed",
+        "degradation": "mixed",
+        "model_version": "m2-waveform-10d",
+        "eer": 0.0,
+        "tpr_at_0_1pct_fpr": 1.0,
+        "tpr_at_1pct_fpr": 1.0,
+        "tpr_at_5pct_fpr": 1.0,
+        "ece": 0.0501138888888889,
+        "count": 18
+      }
+    }
+  }
+}

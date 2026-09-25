@@ -79,6 +79,30 @@ class CorpusManifest:
         validate_manifest(manifest)
         return manifest
 
+    @classmethod
+    def load_json(cls, path: str | Path) -> "CorpusManifest":
+        data = json.loads(Path(path).read_text(encoding="utf8"))
+        raw_items = data.get("samples", data) if isinstance(data, dict) else data
+        entries = []
+        for item in raw_items:
+            sample_dict = {
+                "sample_id": item["sample_id"],
+                "source_id": item["source_id"],
+                "speaker_id": item["speaker_id"],
+                "language": item["language"],
+                "is_synthetic": item.get("is_synthetic", item.get("label") == "synthetic"),
+                "generator": item["generator"],
+                "audio_path": item["audio_path"],
+                "degradation": item["degradation"],
+                "sample_rate": item["sample_rate"],
+                "channels": item.get("channels", 1),
+                "split": item.get("split", "unassigned"),
+            }
+            entries.append(Sample.from_dict(sample_dict))
+        manifest = cls(tuple(entries))
+        validate_manifest(manifest)
+        return manifest
+
     def write_jsonl(self, path: str | Path) -> None:
         Path(path).write_text(
             "".join(json.dumps(asdict(s), sort_keys=True) + "\n" for s in self.samples),
