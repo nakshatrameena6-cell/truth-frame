@@ -56,21 +56,23 @@ class HybridFrontend:
         if samples is None or len(samples) == 0:
             return [0.0] * 10
 
-        if isinstance(samples, np.ndarray):
-            samples = samples.tolist()
+        if isinstance(samples, list):
+            samples_arr = np.asarray(samples, dtype=np.float64)
+        else:
+            samples_arr = samples.astype(np.float64)
 
         # 1. Waveform Peak Normalization (invariance to recording volume/gain)
-        peak = max(abs(x) for x in samples)
+        peak = float(np.max(np.abs(samples_arr))) if len(samples_arr) > 0 else 0.0
         if peak > 1e-6:
-            norm_samples = [x / peak for x in samples]
+            norm_samples = samples_arr / peak
         else:
-            norm_samples = list(samples)
+            norm_samples = samples_arr.copy()
 
         # 2. Basic normalized time-domain metrics
-        mean = sum(norm_samples) / len(norm_samples)
-        norm_rms = math.sqrt(sum(x * x for x in norm_samples) / len(norm_samples))
-        zc = sum(a * b < 0 for a, b in zip(norm_samples, norm_samples[1:])) / max(1, len(norm_samples) - 1)
-        duration_sec = len(samples) / max(1, sample_rate)
+        mean = float(np.mean(norm_samples))
+        norm_rms = float(np.sqrt(np.mean(norm_samples ** 2)))
+        zc = float(np.sum((norm_samples[:-1] * norm_samples[1:]) < 0) / max(1, len(norm_samples) - 1))
+        duration_sec = len(samples_arr) / max(1, sample_rate)
         log1p_duration = math.log1p(duration_sec)
 
         # 3. Frame-level STFT & Spectral metrics
@@ -78,81 +80,65 @@ class HybridFrontend:
         hop_size = 128
         n_samples = len(norm_samples)
 
-        # Build 2D frame matrix
         frames = []
         for start in range(0, max(1, n_samples - frame_size + 1), hop_size):
             chunk = norm_samples[start : start + frame_size]
             if len(chunk) < frame_size:
-                chunk = chunk + [0.0] * (frame_size - len(chunk))
+                chunk = np.pad(chunk, (0, frame_size - len(chunk)))
             frames.append(chunk)
 
         if not frames:
-            frames = [[0.0] * frame_size]
+            frames_arr = np.zeros((1, frame_size), dtype=np.float64)
+        else:
+            frames_arr = np.asarray(frames, dtype=np.float64)
 
-        frames_arr = np.asarray(frames, dtype=np.float64)
-        window_arr = np.array([0.5 * (1.0 - math.cos(2 * math.pi * n / frame_size)) for n in range(frame_size)], dtype=np.float64)
+        window_arr = 0.5 * (1.0 - np.cos(2 * np.pi * np.arange(frame_size, dtype=np.float64) / frame_size))
 
         # Frame RMS
-        frame_rmss = np.sqrt(np.mean(frames_arr ** 2, axis=1)).tolist()
+        frame_rmss = np.sqrt(np.mean(frames_arr ** 2, axis=1))
 
         # Windowed FFT (all frames in one vectorized C call)
         windowed_arr = frames_arr * window_arr
         fft_arr = np.fft.rfft(windowed_arr, axis=1)
         mags_arr = np.abs(fft_arr)
-        frames_mags = mags_arr.tolist()
-
-        # Aggregate spectral statistics across sub-frames
-        centroids: list[float] = []
-        bandwidths: list[float] = []
-        rolloffs: list[float] = []
-        flatnesses: list[float] = []
 
         nyquist = max(1.0, sample_rate / 2.0)
         freq_bin = (sample_rate / 2.0) / (frame_size // 2)
 
-        for mags in frames_mags:
-            total_mag = sum(mags) + 1e-12
+        total_mag = np.sum(mags_arr, axis=1, keepdims=True) + 1e-12
+        k_bins = np.arange(mags_arr.shape[1], dtype=np.float64) * freq_bin
 
-            # Centroid
-            centroid = sum(k * freq_bin * mag for k, mag in enumerate(mags)) / total_mag
-            centroids.append(centroid)
+        # Centroid
+        centroids = np.sum(mags_arr * k_bins, axis=1, keepdims=True) / total_mag
+        # Bandwidth
+        bandwidths = np.sqrt(np.sum(mags_arr * ((k_bins - centroids) ** 2), axis=1, keepdims=True) / total_mag)
 
-            # Bandwidth
-            bw = math.sqrt(sum(((k * freq_bin - centroid) ** 2) * mag for k, mag in enumerate(mags)) / total_mag)
-            bandwidths.append(bw)
+        # Rolloff (85% energy threshold)
+        target_energy = 0.85 * total_mag
+        cum_energy = np.cumsum(mags_arr, axis=1)
+        rolloff_indices = np.argmax(cum_energy >= target_energy, axis=1)
+        rolloffs = rolloff_indices.astype(np.float64) * freq_bin
 
-            # Rolloff (85% energy threshold)
-            target_energy = 0.85 * total_mag
-            cum_energy = 0.0
-            r_freq = 0.0
-            for k, mag in enumerate(mags):
-                cum_energy += mag
-                if cum_energy >= target_energy:
-                    r_freq = k * freq_bin
-                    break
-            rolloffs.append(r_freq)
+        # Flatness (geometric mean / arithmetic mean)
+        arith_mean = total_mag / mags_arr.shape[1]
+        log_mags = np.log(np.maximum(1e-12, mags_arr))
+        geo_mean = np.exp(np.mean(log_mags, axis=1, keepdims=True))
+        flatnesses = geo_mean / np.maximum(1e-12, arith_mean)
 
-            # Flatness (geometric mean / arithmetic mean)
-            arith_mean = total_mag / len(mags)
-            log_sum = sum(math.log(max(1e-12, m)) for m in mags)
-            geo_mean = math.exp(log_sum / len(mags))
-            flatness = geo_mean / max(1e-12, arith_mean)
-            flatnesses.append(flatness)
-
-        avg_centroid = (sum(centroids) / len(centroids)) / nyquist
-        avg_bandwidth = (sum(bandwidths) / len(bandwidths)) / nyquist
-        avg_rolloff = (sum(rolloffs) / len(rolloffs)) / nyquist
-        avg_flatness = sum(flatnesses) / len(flatnesses)
+        avg_centroid = float(np.mean(centroids)) / nyquist
+        avg_bandwidth = float(np.mean(bandwidths)) / nyquist
+        avg_rolloff = float(np.mean(rolloffs)) / nyquist
+        avg_flatness = float(np.mean(flatnesses))
 
         # 4. Energy variance & Spectral flux across frames
-        mean_f_rms = sum(frame_rmss) / len(frame_rmss)
-        frame_energy_var = sum((r - mean_f_rms) ** 2 for r in frame_rmss) / len(frame_rmss)
+        mean_f_rms = float(np.mean(frame_rmss))
+        frame_energy_var = float(np.mean((frame_rmss - mean_f_rms) ** 2))
 
-        fluxes: list[float] = []
-        for f1, f2 in zip(frames_mags, frames_mags[1:]):
-            flux = sum(abs(a - b) for a, b in zip(f1, f2)) / len(f1)
-            fluxes.append(flux)
-        avg_spectral_flux = (sum(fluxes) / len(fluxes)) if fluxes else 0.0
+        if len(mags_arr) > 1:
+            fluxes = np.mean(np.abs(np.diff(mags_arr, axis=0)), axis=1)
+            avg_spectral_flux = float(np.mean(fluxes))
+        else:
+            avg_spectral_flux = 0.0
 
         raw = [
             round(mean, 6),
