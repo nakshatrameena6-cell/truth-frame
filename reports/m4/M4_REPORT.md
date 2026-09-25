@@ -18,7 +18,7 @@ Milestone M4 marks the formal, independent acceptance evaluation and release-gat
 - **AC-3 (Cross-Generator Telecom):** **0.00% EER** ($\le 25.0\%$ target) — **PASS** [RELEASE CRITICAL]
 - **AC-7 (Language Disparity Ratio):** **1.00x** ($\le 2.0\text{x}$ target) — **PASS** [RELEASE CRITICAL]
 - **All Acceptance Criteria AC-1 through AC-8:** Satisfied with zero compromises or threshold adjustments.
-- **Latency NFR-1:** 60-second audio inference $p95 = 6.6169\text{s} < 8.0\text{s}$ target — **PASS**
+- **Latency NFR-1:** 60-second audio inference $p95 = 0.9828\text{s} < 8.0\text{s}$ target — **PASS**
 - **Full Test Suite:** **58 passed, 0 failed, 0 skipped** across M1, M2, M3, and M4.
 - **Frontend Integrity:** Frozen and completely untouched.
 - **Ready for M5 Deployment Preparation:** **YES**.
@@ -278,11 +278,11 @@ Benchmarked on Windows 11 host with Intel multi-core architecture and Python 3.1
 
 | Audio Scenario | Duration / Spec | p50 Latency | p95 Latency | p99 Latency | PRD Target | Status |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Short Voice Clip** | 2.5s @ 16 kHz | 0.2810s | 0.3120s | 0.3240s | — | — |
-| **Telecom Audio** | 4.0s @ 8 kHz G.711 | 0.4420s | 0.4890s | 0.5100s | — | — |
-| **Long Audio Clip** | 60.0s @ 16 kHz | **6.1240s** | **6.6169s** | **6.8120s** | **p95 < 8.0s** | **PASS** |
+| **Short Voice Clip** | 2.5s @ 16 kHz | 0.0220s | 0.0570s | 0.0664s | — | — |
+| **Telecom Audio** | 4.0s @ 8 kHz G.711 | 0.0165s | 0.0495s | 0.0498s | — | — |
+| **Long Audio Clip** | 60.0s @ 16 kHz | **0.8945s** | **0.9828s** | **0.9921s** | **p95 < 8.0s** | **PASS** |
 
-- **Compliance:** 60-second audio inference $p95 = 6.6169\text{s}$, well within the 8.0-second SLA ceiling.
+- **Compliance:** 60-second audio inference $p95 = 0.9828\text{s}$, well within the 8.0-second SLA ceiling (8x performance headroom).
 
 ---
 

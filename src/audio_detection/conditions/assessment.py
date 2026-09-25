@@ -88,43 +88,28 @@ def calculate_snr_db(
     arr = np.asarray(samples, dtype=np.float64)
     n = len(arr)
 
-    # Speech samples
-    speech_squares: list[float] = []
+    speech_mask = np.zeros(n, dtype=bool)
     for st, ed in spans:
         st = max(0, min(st, n))
         ed = max(0, min(ed, n))
         if ed > st:
-            speech_squares.extend((arr[st:ed] ** 2).tolist())
+            speech_mask[st:ed] = True
 
-    if speech_squares:
-        signal_power = float(np.mean(speech_squares))
+    if np.any(speech_mask):
+        signal_power = float(np.mean(arr[speech_mask] ** 2))
     else:
         signal_power = float(np.mean(arr ** 2)) if n > 0 else 1e-6
 
-    # Non-speech samples
-    non_speech_squares: list[float] = []
-    last_end = 0
-    for st, ed in spans:
-        if st > last_end:
-            gap = arr[last_end:st]
-            if len(gap) > 0:
-                non_speech_squares.extend((gap ** 2).tolist())
-        last_end = ed
-    if last_end < n:
-        gap = arr[last_end:]
-        if len(gap) > 0:
-            non_speech_squares.extend((gap ** 2).tolist())
-
-    if non_speech_squares:
-        noise_power = float(np.mean(non_speech_squares))
+    noise_mask = ~speech_mask
+    if np.any(noise_mask):
+        noise_power = float(np.mean(arr[noise_mask] ** 2))
     else:
         # Fallback: estimate noise from bottom 10th percentile frame energies
         frame_len = max(16, sample_rate * 30 // 1000)
-        frame_powers = [
-            float(np.mean(arr[i : i + frame_len] ** 2))
-            for i in range(0, n - frame_len + 1, frame_len)
-        ]
-        if frame_powers:
+        n_frames = n // frame_len
+        if n_frames > 0:
+            framed = arr[: n_frames * frame_len].reshape(n_frames, frame_len)
+            frame_powers = np.mean(framed ** 2, axis=1)
             noise_power = float(np.percentile(frame_powers, 10))
         else:
             noise_power = 1e-5

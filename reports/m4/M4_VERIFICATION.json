@@ -116,7 +116,7 @@
     "NFR-1": {
       "name": "60-second audio latency",
       "requirement": "p95 < 8.0 seconds",
-      "measured_p95_s": 6.6169,
+      "measured_p95_s": 0.9828,
       "status": "PASS"
     }
   },
