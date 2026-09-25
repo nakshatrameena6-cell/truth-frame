@@ -1,4 +1,4 @@
-# PandaMIND audio detection
+# Audio detection
 
 This repository contains the offline audio-detection foundation and corpus
 validation tooling. See `docs/phase-0/README.md` for the Phase 1 contracts and
