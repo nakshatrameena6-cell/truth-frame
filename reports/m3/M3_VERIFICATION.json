@@ -1,0 +1,112 @@
+{
+  "milestone": "M3",
+  "status": "PASS",
+  "timestamp": "2026-09-25T16:38:00Z",
+  "real_model_integrated": true,
+  "model_version": "m2-waveform-10d",
+  "threshold_version": "thr-m3-v1",
+  "calibration": {
+    "version": "cal-m3-platt-v1",
+    "method": "platt_scaling_logistic",
+    "scale": 1.7507097392327118,
+    "shift": -1.1916178038442269,
+    "fitted_on_split": "validation",
+    "test_set_fitting": false,
+    "validation_ece": 0.0418,
+    "test_ece": 0.0537
+  },
+  "operating_points": {
+    "supported": ["fpr_0.1pct", "fpr_1pct", "fpr_5pct"],
+    "thresholds": {
+      "fpr_0.1pct": 0.75,
+      "fpr_1pct": 0.65,
+      "fpr_5pct": 0.50
+    },
+    "invalid_rejected_with_typed_error": true
+  },
+  "three_band_verdict": {
+    "bands": ["consistent_with_human", "inconclusive", "likely_synthetic"],
+    "mandatory_inconclusive": true,
+    "non_disableable": true
+  },
+  "quality_gate": {
+    "min_speech_duration_ms": 2000,
+    "min_snr_db": 3.0,
+    "max_clipping_ratio": 0.25,
+    "override_verdict": "inconclusive",
+    "override_reason": "insufficient_signal",
+    "probability_emitted": 0.0
+  },
+  "vad_and_segmentation": {
+    "vad_enabled": true,
+    "non_speech_excluded": true,
+    "window_duration_ms": 1000,
+    "window_hop_ms": 500
+  },
+  "per_segment_scoring": {
+    "implemented": true,
+    "feature_extraction_per_segment": true,
+    "utterance_aggregation": "mean_probability"
+  },
+  "partial_spoof_localization": {
+    "implemented": true,
+    "threshold_crossing_flagged": true,
+    "contiguous_window_merging": true,
+    "controlled_fixture_validated": true
+  },
+  "condition_assessment": {
+    "effective_bandwidth_hz": true,
+    "snr_db": true,
+    "clipping_ratio": true,
+    "estimated_codec_chain": true,
+    "speech_duration_ms": true,
+    "licenses_confidence": true
+  },
+  "provenance_safety": {
+    "fr7_invariant_enforced": true,
+    "missing_credentials_contribution": false,
+    "contributed_to_verdict_when_absent": false
+  },
+  "language_reporting": {
+    "supported_languages": ["en", "hi", "ta", "hi-en_codeswitch"],
+    "unsupported_flagged": true,
+    "uncertainty_exposed": true
+  },
+  "evidence": {
+    "real_signal_contributions": true,
+    "feature_names": [
+      "waveform_mean",
+      "waveform_norm_rms",
+      "waveform_zcr",
+      "waveform_log_duration",
+      "spectral_centroid",
+      "spectral_bandwidth",
+      "spectral_rolloff",
+      "spectral_flatness",
+      "frame_energy_var",
+      "spectral_flux"
+    ],
+    "model_version_reported": true,
+    "threshold_version_reported": true,
+    "operating_point_reported": true
+  },
+  "latency": {
+    "short_clip_2_5s_p95_s": 0.2767,
+    "telecom_clip_4_0s_p95_s": 0.3425,
+    "sixty_second_clip_p50_s": 4.8406,
+    "sixty_second_clip_p95_s": 6.6169,
+    "sixty_second_clip_p99_s": 6.7405,
+    "nfr1_threshold_s": 8.0,
+    "nfr1_status": "PASS"
+  },
+  "tests": {
+    "m1_api_tests": { "passed": 15, "failed": 0 },
+    "m2_baseline_tests": { "passed": 10, "failed": 0 },
+    "m3_production_tests": { "passed": 17, "failed": 0 },
+    "total_passed": 42,
+    "total_failed": 0,
+    "live_smoke_test_stages_passed": 9
+  },
+  "frontend_modified": false,
+  "ready_for_m4": true
+}
