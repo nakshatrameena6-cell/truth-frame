@@ -1,0 +1,12 @@
+# PandaMIND VPC Deployment — Pinned Production Dependencies
+# Target Runtime: Python 3.10 / 3.11 / 3.14 (Offline Air-gapped VPC)
+
+fastapi==0.138.1
+uvicorn==0.49.0
+pydantic==2.13.4
+python-multipart==0.0.32
+numpy==2.4.6
+
+# Test and validation dependencies
+pytest==9.1.1
+httpx==0.28.1

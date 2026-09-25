@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  pandamind-scorer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pandamind-audio-scorer:1.0.0-rc1
+    container_name: pandamind-audio-scorer
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - SCORER_BACKEND=m3
+      - OFFLINE_MODE=true
+      - DATA_RESIDENCY_REGION=ap-south-1
+      - RETENTION_DAYS=7
+      - ZERO_RETENTION_MODE=false
+      - API_KEY_AUTH_ENABLED=false
+      - LOG_LEVEL=INFO
+      - HOST=0.0.0.0
+      - PORT=8000
+    deploy:
+      resources:
+        limits:
+          cpus: "2.00"
+          memory: 2048M
+        reservations:
+          cpus: "0.50"
+          memory: 512M
+    networks:
+      - vpc-isolated
+
+networks:
+  vpc-isolated:
+    # Air-gapped VPC network: internal flag prevents default internet gateway routing
+    internal: true
