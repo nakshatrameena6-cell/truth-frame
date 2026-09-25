@@ -1,7 +1,7 @@
 {
   "version": "corpus_v1_remediated",
   "description": "PandaMIND M2 Remediated Authentic Evaluation Corpus Split Manifest",
-  "manifest_hash": "004f1a6fe2035d3196e05edc2fcd5018f497695eb38868c797dfce319c9c1070",
+  "manifest_hash": "d40423c6abb1d01a0f30498fb8035939a12086e3d16450389a6bb34a29e02abc",
   "total_samples": 172,
   "total_recordings": 43,
   "held_out_generators": [
@@ -9,9 +9,9 @@
     "elevenlabs_v3"
   ],
   "splits": {
-    "train": 44,
+    "train": 36,
     "validation": 48,
-    "test": 80
+    "test": 88
   },
   "samples": [
     {
@@ -1820,7 +1820,7 @@
       "sample_rate": 16000,
       "duration": 5.52,
       "audio_path": "data/processed/authentic/google_tts_src_005_clean.wav",
-      "split": "train"
+      "split": "validation"
     },
     {
       "sample_id": "google_tts_src_005-g711_8khz",
@@ -1836,7 +1836,7 @@
       "sample_rate": 8000,
       "duration": 5.52,
       "audio_path": "data/processed/authentic/google_tts_src_005_g711_8khz.wav",
-      "split": "train"
+      "split": "validation"
     },
     {
       "sample_id": "google_tts_src_005-amr_nb",
@@ -1852,7 +1852,7 @@
       "sample_rate": 8000,
       "duration": 5.54,
       "audio_path": "data/processed/authentic/google_tts_src_005_amr_nb.wav",
-      "split": "train"
+      "split": "validation"
     },
     {
       "sample_id": "google_tts_src_005-whatsapp_opus",
@@ -1868,7 +1868,7 @@
       "sample_rate": 16000,
       "duration": 5.52,
       "audio_path": "data/processed/authentic/google_tts_src_005_whatsapp_opus.wav",
-      "split": "train"
+      "split": "validation"
     },
     {
       "sample_id": "google_tts_ta_001-clean",
@@ -1884,7 +1884,7 @@
       "sample_rate": 16000,
       "duration": 7.008,
       "audio_path": "data/processed/authentic/google_tts_ta_001_clean.wav",
-      "split": "validation"
+      "split": "test"
     },
     {
       "sample_id": "google_tts_ta_001-g711_8khz",
@@ -1900,7 +1900,7 @@
       "sample_rate": 8000,
       "duration": 7.008,
       "audio_path": "data/processed/authentic/google_tts_ta_001_g711_8khz.wav",
-      "split": "validation"
+      "split": "test"
     },
     {
       "sample_id": "google_tts_ta_001-amr_nb",
@@ -1916,7 +1916,7 @@
       "sample_rate": 8000,
       "duration": 7.02,
       "audio_path": "data/processed/authentic/google_tts_ta_001_amr_nb.wav",
-      "split": "validation"
+      "split": "test"
     },
     {
       "sample_id": "google_tts_ta_001-whatsapp_opus",
@@ -1932,7 +1932,7 @@
       "sample_rate": 16000,
       "duration": 7.008,
       "audio_path": "data/processed/authentic/google_tts_ta_001_whatsapp_opus.wav",
-      "split": "validation"
+      "split": "test"
     },
     {
       "sample_id": "google_tts_ta_002-clean",
@@ -1948,7 +1948,7 @@
       "sample_rate": 16000,
       "duration": 7.392,
       "audio_path": "data/processed/authentic/google_tts_ta_002_clean.wav",
-      "split": "validation"
+      "split": "test"
     },
     {
       "sample_id": "google_tts_ta_002-g711_8khz",
@@ -1964,7 +1964,7 @@
       "sample_rate": 8000,
       "duration": 7.392,
       "audio_path": "data/processed/authentic/google_tts_ta_002_g711_8khz.wav",
-      "split": "validation"
+      "split": "test"
     },
     {
       "sample_id": "google_tts_ta_002-amr_nb",
@@ -1980,7 +1980,7 @@
       "sample_rate": 8000,
       "duration": 7.4,
       "audio_path": "data/processed/authentic/google_tts_ta_002_amr_nb.wav",
-      "split": "validation"
+      "split": "test"
     },
     {
       "sample_id": "google_tts_ta_002-whatsapp_opus",
@@ -1996,7 +1996,7 @@
       "sample_rate": 16000,
       "duration": 7.392,
       "audio_path": "data/processed/authentic/google_tts_ta_002_whatsapp_opus.wav",
-      "split": "validation"
+      "split": "test"
     },
     {
       "sample_id": "google_tts_ta_003-clean",
@@ -2012,7 +2012,7 @@
       "sample_rate": 16000,
       "duration": 5.304,
       "audio_path": "data/processed/authentic/google_tts_ta_003_clean.wav",
-      "split": "train"
+      "split": "validation"
     },
     {
       "sample_id": "google_tts_ta_003-g711_8khz",
@@ -2028,7 +2028,7 @@
       "sample_rate": 8000,
       "duration": 5.304,
       "audio_path": "data/processed/authentic/google_tts_ta_003_g711_8khz.wav",
-      "split": "train"
+      "split": "validation"
     },
     {
       "sample_id": "google_tts_ta_003-amr_nb",
@@ -2044,7 +2044,7 @@
       "sample_rate": 8000,
       "duration": 5.32,
       "audio_path": "data/processed/authentic/google_tts_ta_003_amr_nb.wav",
-      "split": "train"
+      "split": "validation"
     },
     {
       "sample_id": "google_tts_ta_003-whatsapp_opus",
@@ -2060,7 +2060,7 @@
       "sample_rate": 16000,
       "duration": 5.304,
       "audio_path": "data/processed/authentic/google_tts_ta_003_whatsapp_opus.wav",
-      "split": "train"
+      "split": "validation"
     },
     {
       "sample_id": "edge_neural_en_001-clean",

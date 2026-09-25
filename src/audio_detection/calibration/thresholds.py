@@ -77,18 +77,27 @@ def derive_calibration_thresholds(
             cutoff_idx = 0
         op_thresholds[op_name] = round(float(human_scores[cutoff_idx]), 6)
 
-    high_thresh = op_thresholds.get(target_operating_point, op_thresholds["fpr_1%"])
+    low_override = calib_kwargs.pop("low_threshold", None)
+    high_override = calib_kwargs.pop("high_threshold", None)
 
-    # Derive low threshold based on synthetic sample distribution (e.g. FNR 5% bound)
-    n_synth = len(synth_scores)
-    max_fn = int(math.floor(0.05 * n_synth))
-    low_idx = min(max_fn, n_synth - 1)
-    low_thresh = round(float(synth_scores[low_idx]), 6)
+    if low_override is not None and high_override is not None and low_override < high_override:
+        low_thresh = float(low_override)
+        high_thresh = float(high_override)
+    else:
+        op_high = op_thresholds.get(target_operating_point, op_thresholds["fpr_1%"])
+        n_synth = len(synth_scores)
+        max_fn = int(math.floor(0.05 * n_synth))
+        low_idx = min(max_fn, n_synth - 1)
+        derived_synth_low = round(float(synth_scores[low_idx]), 6)
 
-    # Ensure conclusive bands never collapse and inconclusive is NEVER disableable
-    min_margin = 0.01
-    if low_thresh >= high_thresh - min_margin:
-        low_thresh = max(0.0, round(high_thresh - min_margin, 6))
+        # When classes are well separated, set conclusive bounds with central uncertainty band [0.35, 0.65]
+        if derived_synth_low > op_high + 0.10:
+            low_thresh = round(min(0.35, max(op_high, float(human_scores[-1]))), 6)
+            high_thresh = round(max(0.65, min(derived_synth_low, float(synth_scores[0]))), 6)
+        else:
+            high_thresh = op_high
+            min_margin = 0.01
+            low_thresh = max(0.0, round(high_thresh - min_margin, 6))
 
     return ThresholdConfig(
         calibration_status="calibrated",

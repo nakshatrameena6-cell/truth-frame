@@ -73,11 +73,11 @@ RECORDING_CONFIGS = [
 
     {"base_name": "google_tts_hi_001", "speaker_id": "hi-google-tts-speaker-001", "source_id": "google_tts_hi_001", "language": "hi", "is_synthetic": True, "generator": "google_tts", "split": "train"},
     {"base_name": "google_tts_hi_002", "speaker_id": "hi-google-tts-speaker-002", "source_id": "google_tts_hi_002", "language": "hi", "is_synthetic": True, "generator": "google_tts", "split": "train"},
-    {"base_name": "google_tts_src_005", "speaker_id": "google_tts_spk_005", "source_id": "google_tts_src_005", "language": "hi", "is_synthetic": True, "generator": "google_tts", "split": "train"},
+    {"base_name": "google_tts_src_005", "speaker_id": "google_tts_spk_005", "source_id": "google_tts_src_005", "language": "hi", "is_synthetic": True, "generator": "google_tts", "split": "validation"},
 
-    {"base_name": "google_tts_ta_001", "speaker_id": "ta-google-tts-speaker-001", "source_id": "google_tts_ta_001", "language": "ta", "is_synthetic": True, "generator": "google_tts", "split": "validation"},
-    {"base_name": "google_tts_ta_002", "speaker_id": "ta-google-tts-speaker-002", "source_id": "google_tts_ta_002", "language": "ta", "is_synthetic": True, "generator": "google_tts", "split": "validation"},
-    {"base_name": "google_tts_ta_003", "speaker_id": "ta-google-tts-speaker-003", "source_id": "google_tts_ta_003", "language": "ta", "is_synthetic": True, "generator": "google_tts", "split": "train"},
+    {"base_name": "google_tts_ta_001", "speaker_id": "ta-google-tts-speaker-001", "source_id": "google_tts_ta_001", "language": "ta", "is_synthetic": True, "generator": "google_tts", "split": "test"},
+    {"base_name": "google_tts_ta_002", "speaker_id": "ta-google-tts-speaker-002", "source_id": "google_tts_ta_002", "language": "ta", "is_synthetic": True, "generator": "google_tts", "split": "test"},
+    {"base_name": "google_tts_ta_003", "speaker_id": "ta-google-tts-speaker-003", "source_id": "google_tts_ta_003", "language": "ta", "is_synthetic": True, "generator": "google_tts", "split": "validation"},
 
     # ----------------------------------------------------
     # 4. Synthetic Speech - Held-out Generator 1: edge_tts_neural (10 recordings) -> ALL TEST

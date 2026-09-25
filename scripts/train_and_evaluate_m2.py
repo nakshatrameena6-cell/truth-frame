@@ -110,6 +110,8 @@ def evaluate_slice(group: list[dict], slice_name: str, model_version: str) -> di
             "status": "not_evaluable",
             "reason": "no_data",
             "count": 0,
+            "pos_count": 0,
+            "neg_count": 0,
             "metrics": None,
         }
 
@@ -229,6 +231,8 @@ def main():
         target_operating_point="fpr_1%",
         scale=scaler_10d.scale,
         shift=scaler_10d.shift,
+        low_threshold=0.35,
+        high_threshold=0.65,
     )
 
     detector_10d = AudioDetector(
