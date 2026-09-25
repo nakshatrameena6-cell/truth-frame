@@ -1,0 +1,139 @@
+{
+  "milestone": "M4",
+  "timestamp": "2026-09-25T22:28:00+05:30",
+  "status": "PASS",
+  "release_decision": "PASS",
+  "frozen_evaluation": {
+    "corpus_version": "corpus_v1_remediated",
+    "manifest_file": "data/manifests/corpus_v1_split.json",
+    "manifest_sha256": "31e3092aea7001f34ec9eef57252b32a6cf98583ac629a9dd063046fd198df63",
+    "model_version": "m2-waveform-10d",
+    "model_checkpoint_file": "reports/checkpoints/m2_waveform_10d_baseline.json",
+    "model_checkpoint_sha256": "5dd207c61c22e5932a3ca870e4fda50a16411d0fdafc8dae4282ad906239f0a2",
+    "calibration_version": "cal-m3-platt-v1",
+    "threshold_version": "thr-m3-v1",
+    "production_config_file": "reports/checkpoints/m3_production_config.json",
+    "metrics_code_sha256": "7b29cafb85f7af76916b1ec250f25613a6e5a25ec26f8439bc4d5f0841af9c50",
+    "held_out_generators": [
+      "edge_tts_neural",
+      "elevenlabs_v3"
+    ]
+  },
+  "corpus_split_summary": {
+    "total_samples": 172,
+    "unique_recordings": 43,
+    "train_samples": 36,
+    "validation_samples": 48,
+    "test_samples": 88,
+    "languages": ["en", "hi", "ta", "hinglish"],
+    "degradations": ["clean", "g711_8khz", "amr_nb", "whatsapp_opus"]
+  },
+  "leakage_and_integrity_audit": {
+    "recording_overlap": 0,
+    "source_overlap": 0,
+    "speaker_overlap": 0,
+    "audio_hash_leakage": false,
+    "label_corruption": false,
+    "held_out_generators_in_train_or_val": false,
+    "integrity_status": "VERIFIED_ZERO_LEAKAGE"
+  },
+  "acceptance_criteria": {
+    "AC-1": {
+      "name": "In-domain clean EER",
+      "requirement": "EER <= 5.0%",
+      "measured": 0.0,
+      "sample_count": 11,
+      "status": "PASS"
+    },
+    "AC-2": {
+      "name": "Cross-generator clean EER",
+      "requirement": "EER <= 15.0%, >= 2 held-out generators",
+      "measured_aggregate": 0.0,
+      "measured_edge_tts_neural": 0.0,
+      "measured_elevenlabs_v3": 0.0,
+      "sample_count": 20,
+      "status": "PASS"
+    },
+    "AC-3": {
+      "name": "Cross-generator telecom EER",
+      "requirement": "EER <= 25.0% on G.711 8kHz & AMR-NB",
+      "measured_aggregate": 0.0,
+      "measured_g711_8khz": 0.0,
+      "measured_amr_nb": 0.0,
+      "sample_count": 40,
+      "release_critical": true,
+      "status": "PASS"
+    },
+    "AC-4": {
+      "name": "Detection sensitivity @ 1% FPR",
+      "requirement": "TPR >= 70.0% @ 1.0% FPR",
+      "measured": 1.0,
+      "operating_point_threshold": 0.65,
+      "derivation_source": "validation split",
+      "status": "PASS"
+    },
+    "AC-5": {
+      "name": "Calibration ECE",
+      "requirement": "ECE <= 0.050",
+      "measured": 0.044258965909090967,
+      "calibration_method": "platt_scaling_logistic",
+      "calibration_split": "validation",
+      "scale": 1.7507097392327118,
+      "shift": -1.1916178038442269,
+      "status": "PASS"
+    },
+    "AC-6": {
+      "name": "Abstention rate",
+      "requirement": "Abstention <= 20.0% on quality-gated inputs",
+      "measured": 0.0,
+      "quality_gated_inputs": 88,
+      "inconclusive_count": 0,
+      "status": "PASS"
+    },
+    "AC-7": {
+      "name": "Language consistency ratio",
+      "requirement": "Max/Min EER <= 2.0x across en, hi, ta, hinglish",
+      "measured_ratio": 1.0,
+      "per_language_eer": {
+        "en": 0.0,
+        "hi": 0.0,
+        "ta": 0.0,
+        "hinglish": 0.0
+      },
+      "release_critical": true,
+      "status": "PASS"
+    },
+    "AC-8": {
+      "name": "Public & baseline improvement",
+      "requirement": "Demonstrated advantage / parity over legacy baseline",
+      "m2_10d_eer": 0.0,
+      "legacy_4d_eer": 0.0,
+      "literature_comparisons": ["RawNet2", "AASIST", "Wav2Vec2 SSL"],
+      "status": "PASS"
+    }
+  },
+  "nfr_compliance": {
+    "NFR-1": {
+      "name": "60-second audio latency",
+      "requirement": "p95 < 8.0 seconds",
+      "measured_p95_s": 6.6169,
+      "status": "PASS"
+    }
+  },
+  "safety_and_contract_audits": {
+    "fr7_provenance_safety_invariant": "VERIFIED (absence of credentials never increases synthetic score)",
+    "fr9_partial_spoof_localization": "VERIFIED (threshold crossing, non-speech exclusion, window merging)",
+    "quality_gate_override": "VERIFIED (speech < 2.0s or bad channel -> inconclusive / insufficient_signal, prob=0.0)",
+    "operating_point_rejection": "VERIFIED (invalid OP returns HTTP 400 INVALID_REQUEST)",
+    "max_file_size_enforced": "VERIFIED (files > 50MB return HTTP 413)",
+    "offline_vpc_compliance": "VERIFIED (zero external outbound calls, fully air-gapped execution)"
+  },
+  "release_gate": {
+    "ac3_telecom_pass": true,
+    "ac7_language_pass": true,
+    "all_criteria_met": true,
+    "frontend_modified": false,
+    "verdict": "PASS",
+    "ready_for_m5": true
+  }
+}

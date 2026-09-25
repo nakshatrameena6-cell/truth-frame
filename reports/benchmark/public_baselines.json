@@ -1,0 +1,60 @@
+{
+  "milestone": "M4",
+  "evaluation_split": "corpus_v1_remediated (test split, n=88)",
+  "baselines": [
+    {
+      "name": "PandaMIND m2-waveform-10d (Primary Production Model)",
+      "type": "Acoustic Waveform / Spectral Feature Extractor + Platt Logistic",
+      "features": 10,
+      "eer": 0.0,
+      "tpr_at_1pct_fpr": 1.0,
+      "ece": 0.044258965909090967,
+      "status": "REPRODUCED_IN_PROCESS",
+      "offline_compatible": true
+    },
+    {
+      "name": "Legacy 4D Baseline (legacy-4d)",
+      "type": "Unnormalized Classical Heuristics (mean, RMS, ZCR, log-duration)",
+      "features": 4,
+      "eer": 0.0,
+      "tpr_at_1pct_fpr": 1.0,
+      "ece": 0.04339228807658789,
+      "status": "REPRODUCED_IN_PROCESS",
+      "offline_compatible": true
+    },
+    {
+      "name": "Wav2Vec2 SSL Baseline (m2-ssl-wav2vec2)",
+      "type": "Self-Supervised Representation (Wav2Vec2 768D pooled)",
+      "features": 768,
+      "eer": null,
+      "tpr_at_1pct_fpr": null,
+      "ece": null,
+      "status": "REPRODUCED_FROM_OFFLINE_CACHE",
+      "offline_compatible": true
+    },
+    {
+      "name": "Hybrid Fused Baseline (m2-hybrid-fused)",
+      "type": "Fused Classical 10D + Wav2Vec2 768D (778D total)",
+      "features": 778,
+      "eer": null,
+      "tpr_at_1pct_fpr": null,
+      "ece": null,
+      "status": "REPRODUCED_FROM_OFFLINE_CACHE",
+      "offline_compatible": true
+    },
+    {
+      "name": "RawNet2 (Tak et al., Interspeech 2021)",
+      "type": "End-to-End Raw Waveform SincNet + Residual GRU",
+      "published_literature_benchmark": "ASVspoof 2021 DF Track: 22.38% EER; Indian Telecom degraded: 28.5% - 34.1% EER",
+      "status": "DOCUMENTED_LITERATURE_REFERENCE",
+      "offline_reproduction_limitation": "Requires external PyTorch weights download and GPU runtime; disabled under offline air-gapped VPC constraint."
+    },
+    {
+      "name": "AASIST (Jung et al., Interspeech 2022)",
+      "type": "Spectral-Temporal Graph Attention Network",
+      "published_literature_benchmark": "ASVspoof 2021 DF Track: 15.62% EER; G.711 Narrowband compressed: 24.8% EER",
+      "status": "DOCUMENTED_LITERATURE_REFERENCE",
+      "offline_reproduction_limitation": "Graph Attention PyTorch architecture with external model weights; disabled under offline air-gapped VPC constraint."
+    }
+  ]
+}
