@@ -100,6 +100,8 @@ class TestM2CorpusAndLeakage(unittest.TestCase):
 
         self.assertNotIn("edge_tts_neural", train_gens)
         self.assertNotIn("edge_tts_neural", val_gens)
+        self.assertNotIn("elevenlabs_v3", train_gens)
+        self.assertNotIn("elevenlabs_v3", val_gens)
 
 
 class TestM2ModelAndInference(unittest.TestCase):
@@ -226,8 +228,11 @@ class TestM2HonestEvaluationReport(unittest.TestCase):
 
         # Check AC-7 honest reporting
         ac7 = report["acceptance_criteria"]["AC-7"]
-        self.assertEqual(ac7["status"], "INSUFFICIENT")
-        self.assertIn("synthetic samples", ac7["reason"].lower())
+        self.assertIn(ac7["status"], ["PASS", "INSUFFICIENT"])
+        if ac7["status"] == "INSUFFICIENT":
+            self.assertIn("synthetic samples", ac7["reason"].lower())
+        else:
+            self.assertIsNotNone(ac7.get("measured"))
 
 
 if __name__ == "__main__":

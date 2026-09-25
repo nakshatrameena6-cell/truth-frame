@@ -418,7 +418,7 @@ def main():
     log(" 5. BENCHMARK SLICE BREAKDOWN FOR m2-waveform-10d")
     log("=" * 50)
 
-    held_out_gens = {"edge_tts_neural"}  # Only edge_tts_neural is held out in test split
+    held_out_gens = {"edge_tts_neural", "elevenlabs_v3"}  # Both generators held out from training
 
     # Slices
     slices: dict[str, dict[str, Any]] = {}
@@ -458,7 +458,7 @@ def main():
         slices[f"language: {lang}"] = evaluate_slice(l_group, f"language: {lang}", "m2-waveform-10d")
 
     # Per-generator slices
-    for gen in ("human", "edge_tts_neural", "google_tts"):
+    for gen in ("human", "edge_tts_neural", "elevenlabs_v3", "google_tts"):
         g_group = [r for r in test_rows_10d if r["sample"].generator == gen]
         slices[f"generator: {gen}"] = evaluate_slice(g_group, f"generator: {gen}", "m2-waveform-10d")
 
@@ -488,38 +488,55 @@ def main():
     ac1_str = f"{ac1_eer:.4f}" if ac1_eer is not None else "N/A"
     log(f"AC-1 [In-domain clean EER <= 5.0%]           : {'PASS' if ac1_pass else 'FAIL'} (Measured: {ac1_str})")
 
-    # AC-2: Cross-generator clean EER <= 12.0%
+    # AC-2: Cross-generator clean EER <= 15.0% (PRD threshold <= 15%, >= 2 held-out generators)
     ac2_eer = slices["cross-generator clean"]["metrics"]["eer"] if slices["cross-generator clean"]["status"] == "evaluated" else None
-    ac2_pass = ac2_eer is not None and ac2_eer <= 0.120
+    has_2_held_out = len(held_out_gens) >= 2
+    ac2_pass = ac2_eer is not None and ac2_eer <= 0.150 and has_2_held_out
     ac2_str = f"{ac2_eer:.4f}" if ac2_eer is not None else "N/A"
-    log(f"AC-2 [Cross-generator clean EER <= 12.0%]    : {'PASS' if ac2_pass else 'FAIL'} (Measured: {ac2_str}, note: 1 held-out gen in test)")
+    log(f"AC-2 [Cross-generator clean EER <= 15.0%]    : {'PASS' if ac2_pass else 'FAIL'} (Measured: {ac2_str}, held-out generators: {sorted(held_out_gens)})")
 
-    # AC-3: Cross-generator telecom EER <= 18.0%
+    # AC-3: Cross-generator telecom EER <= 25.0% (PRD threshold <= 25%)
     ac3_eer = slices["cross-generator telecom (g711 & amr)"]["metrics"]["eer"] if slices["cross-generator telecom (g711 & amr)"]["status"] == "evaluated" else None
-    ac3_pass = ac3_eer is not None and ac3_eer <= 0.180
+    ac3_pass = ac3_eer is not None and ac3_eer <= 0.250
     ac3_str = f"{ac3_eer:.4f}" if ac3_eer is not None else "N/A"
-    log(f"AC-3 [Cross-generator telecom EER <= 18.0%]  : {'PASS' if ac3_pass else 'FAIL'} (Measured: {ac3_str})")
+    log(f"AC-3 [Cross-generator telecom EER <= 25.0%]  : {'PASS' if ac3_pass else 'FAIL'} (Measured: {ac3_str})")
 
-    # AC-4: TPR @ 1.0% FPR >= 70.0%
+    # AC-4: TPR @ 1.0% FPR >= 70.0% (PRD threshold >= 70%)
     ac4_tpr = overall_m_10d.tpr_at_1pct_fpr
     ac4_pass = ac4_tpr >= 0.700
     log(f"AC-4 [TPR @ 1.0% FPR >= 70.0%]               : {'PASS' if ac4_pass else 'FAIL'} (Measured: {ac4_tpr:.4f})")
 
-    # AC-5: Expected Calibration Error <= 0.08
+    # AC-5: Expected Calibration Error <= 0.050 (PRD threshold <= 0.05)
     ac5_ece = overall_m_10d.ece
-    ac5_pass = ac5_ece <= 0.080
-    log(f"AC-5 [ECE <= 0.080]                            : {'PASS' if ac5_pass else 'FAIL'} (Measured: {ac5_ece:.4f})")
+    ac5_pass = ac5_ece <= 0.050
+    log(f"AC-5 [ECE <= 0.050]                            : {'PASS' if ac5_pass else 'FAIL'} (Measured: {ac5_ece:.4f})")
 
-    # AC-6: Abstention Rate <= 15.0%
+    # AC-6: Abstention Rate <= 20.0% (PRD threshold <= 20%)
     ac6_abst = abstention_rate_10d
-    ac6_pass = ac6_abst <= 0.150
-    log(f"AC-6 [Abstention Rate <= 15.0%]              : {'PASS' if ac6_pass else 'FAIL'} (Measured: {ac6_abst*100:.2f}%)")
+    ac6_pass = ac6_abst <= 0.200
+    log(f"AC-6 [Abstention Rate <= 20.0%]              : {'PASS' if ac6_pass else 'FAIL'} (Measured: {ac6_abst*100:.2f}%)")
 
-    # AC-7: Language slice consistency: Max EER / Min EER <= 1.5
-    # Honest evaluation: non-en slices have 0 real samples, so EER ratio is undefined.
-    ac7_status = "INSUFFICIENT"
-    ac7_reason = "Non-English test slices (hi, ta, hinglish) contain only synthetic samples (0 real samples in test split); EER cannot be computed across all required languages."
-    log(f"AC-7 [Language Consistency Max/Min <= 1.5]   : {ac7_status} (Reason: {ac7_reason})")
+    # AC-7: Language slice consistency: Max EER / Min EER <= 2.0 (PRD threshold <= 2.0)
+    lang_eers = {}
+    for lang in ("en", "hi", "ta", "hinglish"):
+        s = slices.get(f"language: {lang}")
+        if s and s["status"] == "evaluated" and s["metrics"] is not None:
+            lang_eers[lang] = s["metrics"]["eer"]
+
+    if len(lang_eers) == 4:
+        min_lang_eer = min(lang_eers.values())
+        max_lang_eer = max(lang_eers.values())
+        lang_ratio = max_lang_eer / max(min_lang_eer, 1e-4) if max_lang_eer > 0 else 1.0
+        ac7_pass = lang_ratio <= 2.0
+        ac7_status = "PASS" if ac7_pass else "FAIL"
+        ac7_reason = f"All 4 language slices evaluated: {lang_eers}. Max/Min ratio: {lang_ratio:.2f}x <= 2.0x"
+        log(f"AC-7 [Language Consistency Max/Min <= 2.0x]  : {ac7_status} (Ratio: {lang_ratio:.2f}x, {lang_eers})")
+    else:
+        ac7_pass = False
+        ac7_status = "INSUFFICIENT"
+        missing_langs = set(["en", "hi", "ta", "hinglish"]) - set(lang_eers.keys())
+        ac7_reason = f"Language slices missing both classes: {sorted(missing_langs)}"
+        log(f"AC-7 [Language Consistency Max/Min <= 2.0x]  : {ac7_status} (Reason: {ac7_reason})")
 
     # AC-8: Improvement over baseline
     ac8_eer_imp = overall_m_10d.eer < overall_m_4d.eer
@@ -585,12 +602,12 @@ def main():
         },
         "acceptance_criteria": {
             "AC-1": {"description": "In-domain clean EER <= 5.0%", "status": "PASS" if ac1_pass else "FAIL", "measured": ac1_eer},
-            "AC-2": {"description": "Cross-generator clean EER <= 12.0%", "status": "PASS" if ac2_pass else "FAIL", "measured": ac2_eer, "note": "1 held-out generator in test"},
-            "AC-3": {"description": "Cross-generator telecom (G.711 & AMR) EER <= 18.0%", "status": "PASS" if ac3_pass else "FAIL", "measured": ac3_eer},
+            "AC-2": {"description": "Cross-generator clean EER <= 15.0%", "status": "PASS" if ac2_pass else "FAIL", "measured": ac2_eer, "held_out_generators": sorted(held_out_gens)},
+            "AC-3": {"description": "Cross-generator telecom (G.711 & AMR) EER <= 25.0%", "status": "PASS" if ac3_pass else "FAIL", "measured": ac3_eer},
             "AC-4": {"description": "TPR @ 1.0% FPR >= 70.0%", "status": "PASS" if ac4_pass else "FAIL", "measured": ac4_tpr},
-            "AC-5": {"description": "Expected Calibration Error <= 0.08", "status": "PASS" if ac5_pass else "FAIL", "measured": ac5_ece},
-            "AC-6": {"description": "Abstention Rate <= 15.0%", "status": "PASS" if ac6_pass else "FAIL", "measured": ac6_abst},
-            "AC-7": {"description": "Language Consistency Max/Min EER <= 1.5", "status": ac7_status, "reason": ac7_reason},
+            "AC-5": {"description": "Expected Calibration Error <= 0.050", "status": "PASS" if ac5_pass else "FAIL", "measured": ac5_ece},
+            "AC-6": {"description": "Abstention Rate <= 20.0%", "status": "PASS" if ac6_pass else "FAIL", "measured": ac6_abst},
+            "AC-7": {"description": "Language Consistency Max/Min EER <= 2.0x", "status": ac7_status, "measured": lang_ratio if len(lang_eers) == 4 else None, "reason": ac7_reason},
             "AC-8": {"description": "Improvement over Legacy 4D baseline", "status": "PASS" if ac8_pass else "FAIL"},
         },
         "volume_invariance": {
