@@ -67,6 +67,10 @@ class Conditions(BaseModel):
     snr_db: float = Field(..., description="Signal-to-noise ratio in dB.")
     speech_duration_ms: int = Field(..., ge=0, description="Total speech duration in milliseconds.")
     quality_gate: str = Field(..., description="Quality gate evaluation status ('passed' or 'failed').")
+    clipping_ratio: Optional[float] = Field(
+        default=None,
+        description="Fraction of samples reaching or exceeding clipping threshold.",
+    )
 
 
 class Provenance(BaseModel):
@@ -81,7 +85,7 @@ class Provenance(BaseModel):
 
 class SignalContribution(BaseModel):
     """Per-signal contribution in evidence explanation (PRD FR-15)."""
-    signal: str = Field(..., description="Signal or feature name (e.g. ssl_frontend, waveform_branch).")
+    signal: str = Field(..., description="Signal or feature name (e.g. waveform_norm_rms, spectral_flatness).")
     weight: float = Field(..., description="Relative contribution weight to aggregate decision.")
 
 
@@ -97,11 +101,27 @@ class Evidence(BaseModel):
     )
     model_version: str = Field(
         ...,
-        description="Exact model/scorer identifier. In M1, explicitly marked as stub (e.g. 'm1-stub').",
+        description="Exact model/scorer identifier (e.g. 'm2-waveform-10d').",
     )
     threshold_version: str = Field(
         ...,
         description="Version of validation calibration thresholds applied.",
+    )
+    operating_point: Optional[str] = Field(
+        default=None,
+        description="Active operating point in force.",
+    )
+    flagged_segment_ranges: Optional[List[Segment]] = Field(
+        default_factory=list,
+        description="Flagged segment ranges exceeding the operating threshold (FR-9).",
+    )
+    code_switch_mix: Optional[Dict[str, float]] = Field(
+        default=None,
+        description="Code-switch language distribution if detected (FR-10).",
+    )
+    uncertain_language: Optional[bool] = Field(
+        default=None,
+        description="True if language detection could not be confirmed with high confidence.",
     )
 
 

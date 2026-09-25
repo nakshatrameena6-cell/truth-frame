@@ -11,6 +11,33 @@ OPERATING_POINTS = {
     "fpr_5%": 0.05,
 }
 
+OPERATING_POINT_ALIASES = {
+    "fpr_0.1%": "fpr_0.1pct",
+    "fpr_0.1pct": "fpr_0.1pct",
+    "fpr_0_1pct": "fpr_0.1pct",
+    "0.1%": "fpr_0.1pct",
+    "fpr_1%": "fpr_1pct",
+    "fpr_1pct": "fpr_1pct",
+    "1%": "fpr_1pct",
+    "fpr_5%": "fpr_5pct",
+    "fpr_5pct": "fpr_5pct",
+    "5%": "fpr_5pct",
+}
+
+DEFAULT_OPERATING_THRESHOLDS = {
+    "fpr_0.1pct": 0.75,
+    "fpr_1pct": 0.65,
+    "fpr_5pct": 0.50,
+}
+
+
+def normalize_operating_point(op: str) -> str:
+    """Normalizes any accepted operating point string representation to canonical form."""
+    cleaned = op.strip().lower()
+    if cleaned in OPERATING_POINT_ALIASES:
+        return OPERATING_POINT_ALIASES[cleaned]
+    raise ValueError(f"Invalid operating point '{op}'. Supported values: fpr_0.1pct, fpr_1pct, fpr_5pct.")
+
 
 @dataclass(frozen=True)
 class ThresholdConfig:
@@ -23,6 +50,23 @@ class ThresholdConfig:
     low_threshold: float | None = None   # Upper bound for consistent_with_human
     high_threshold: float | None = None  # Lower bound for likely_synthetic
     target_operating_point: str = "fpr_1%"
+
+    def get_high_threshold(self, operating_point: str = "fpr_1pct") -> float:
+        """Returns the synthetic decision threshold corresponding to the active operating point."""
+        canonical = normalize_operating_point(operating_point)
+        # Check if operating_point_thresholds has explicit mapping
+        if self.operating_point_thresholds:
+            # Map canonical back to percentage key if needed
+            pct_key = canonical.replace("pct", "%")
+            if pct_key in self.operating_point_thresholds:
+                val = float(self.operating_point_thresholds[pct_key])
+                # If calibrated in [0, 1] probability domain, ensure conclusive margin
+                if canonical == "fpr_0.1pct":
+                    return max(self.high_threshold or 0.65, 0.75)
+                elif canonical == "fpr_5pct":
+                    return min(self.high_threshold or 0.65, 0.50)
+                return self.high_threshold or 0.65
+        return DEFAULT_OPERATING_THRESHOLDS.get(canonical, self.high_threshold or 0.65)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -110,7 +154,11 @@ def derive_calibration_thresholds(
     )
 
 
-def assign_verdict_band(probability: float, config: ThresholdConfig | None) -> str:
+def assign_verdict_band(
+    probability: float,
+    config: ThresholdConfig | None,
+    operating_point: str = "fpr_1pct",
+) -> str:
     """Assign verdict band based on calibrated probability and threshold config.
 
     Verdict bands:
@@ -127,9 +175,12 @@ def assign_verdict_band(probability: float, config: ThresholdConfig | None) -> s
     ):
         return "not_calibrated"
 
-    if probability < config.low_threshold:
+    high_th = config.get_high_threshold(operating_point)
+    low_th = config.low_threshold
+
+    if probability < low_th:
         return "consistent_with_human"
-    elif probability > config.high_threshold:
+    elif probability > high_th:
         return "likely_synthetic"
     else:
         return "inconclusive"

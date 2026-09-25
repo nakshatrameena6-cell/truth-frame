@@ -1,8 +1,20 @@
-"""M2 Baseline Scoring Service for PandaMIND Audio Scoring API.
+"""M3 Production Scoring Service for PandaMIND Audio Scoring API.
 
-Swaps out the M1 stub for the real trained, calibrated baseline model
-while strictly preserving the PRD Section 05 frozen contract, typed schemas,
-and safety invariants (such as FR-7 provenance non-attribution).
+Implements the complete real scoring pipeline (Milestone M3):
+audio input
+  -> preprocessing
+  -> condition assessment
+  -> speech detection/segmentation
+  -> quality gate (mandatory inconclusive on speech < 2.0s or poor SNR)
+  -> model inference (m2-waveform-10d)
+  -> per-segment scores
+  -> utterance aggregate
+  -> provenance/condition fusion (FR-7 safety invariant)
+  -> calibrated probability
+  -> operating-point banding (0.1%, 1%, 5% FPR)
+  -> partial-spoof localization (FR-9)
+  -> evidence population with real acoustic signal contributions
+  -> API response.
 """
 from __future__ import annotations
 
@@ -10,12 +22,23 @@ import io
 import json
 import math
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 
-from audio_detection.calibration import PlattScaler, ThresholdConfig, assign_verdict_band
+from audio_detection.calibration import (
+    ThresholdConfig,
+    assign_verdict_band,
+    normalize_operating_point,
+)
+from audio_detection.conditions import assess_conditions
 from audio_detection.detector import AudioDetector
+from audio_detection.language import detect_language
+from audio_detection.localization import (
+    generate_speech_windows,
+    localize_partial_spoofs,
+    score_speech_segments,
+)
 from audio_detection.models.frontend import HybridFrontend
 from audio_detection.preprocessing import decode_wav, vad_segments
 
@@ -33,44 +56,25 @@ from .schemas import (
 
 DEFAULT_CHECKPOINT_PATH = Path("reports/checkpoints/m2_waveform_10d_baseline.json")
 FALLBACK_CHECKPOINT_PATH = Path("reports/checkpoints/phase8_expanded_10d_baseline.json")
+M3_CONFIG_PATH = Path("reports/checkpoints/m3_production_config.json")
+THRESHOLD_VERSION = "thr-m3-v1"
 
-
-def _calculate_snr_db(samples: list[float], spans: list[tuple[int, int]]) -> float:
-    """Estimates SNR in dB by comparing active speech energy to non-active regions."""
-    if not samples:
-        return 0.0
-
-    speech_energies = []
-    for st, ed in spans:
-        seg = samples[st:ed]
-        if seg:
-            speech_energies.append(sum(x * x for x in seg) / len(seg))
-
-    signal_energy = sum(speech_energies) / len(speech_energies) if speech_energies else 1e-4
-
-    # Non-speech frames
-    non_speech_energies = []
-    last_end = 0
-    for st, ed in spans:
-        if st > last_end:
-            gap = samples[last_end:st]
-            if gap:
-                non_speech_energies.append(sum(x * x for x in gap) / len(gap))
-        last_end = ed
-    if last_end < len(samples):
-        gap = samples[last_end:]
-        if gap:
-            non_speech_energies.append(sum(x * x for x in gap) / len(gap))
-
-    noise_energy = sum(non_speech_energies) / len(non_speech_energies) if non_speech_energies else 1e-5
-    noise_energy = max(noise_energy, 1e-6)
-
-    ratio = max(1e-4, signal_energy / noise_energy)
-    return round(float(10.0 * math.log10(ratio)), 1)
+FEATURE_NAMES = [
+    "waveform_mean",
+    "waveform_norm_rms",
+    "waveform_zcr",
+    "waveform_log_duration",
+    "spectral_centroid",
+    "spectral_bandwidth",
+    "spectral_rolloff",
+    "spectral_flatness",
+    "frame_energy_var",
+    "spectral_flux",
+]
 
 
 class ScoringEngine:
-    """Offline, deterministic inference service running the M2 baseline detector."""
+    """Offline, deterministic inference service running the production detector."""
 
     def __init__(self, checkpoint_path: Optional[Path] = None):
         self.checkpoint_path = checkpoint_path or DEFAULT_CHECKPOINT_PATH
@@ -92,8 +96,8 @@ class ScoringEngine:
                 scale = float(data.get("scale", 1.0))
                 shift = float(data.get("shift", 0.0))
                 thresholds_dict = data.get("thresholds", {})
-                low_th = float(thresholds_dict.get("low", 0.35))
-                high_th = float(thresholds_dict.get("high", 0.65))
+                low_th = float(data.get("verdict_bands", {}).get("low", 0.35))
+                high_th = float(data.get("verdict_bands", {}).get("high", 0.65))
 
                 t_cfg = ThresholdConfig(
                     scale=scale,
@@ -112,7 +116,7 @@ class ScoringEngine:
                     threshold_config=t_cfg,
                 )
                 return det
-            except Exception as e:
+            except Exception:
                 pass
 
         # Fallback default calibrated baseline
@@ -134,7 +138,7 @@ class ScoringEngine:
         )
 
     def reload(self) -> None:
-        """Reloads the detector checkpoint from disk if newly trained."""
+        """Reloads the detector checkpoint from disk."""
         self.detector = self._load_detector()
 
     def score_audio(
@@ -145,11 +149,14 @@ class ScoringEngine:
         language: Optional[str] = None,
         filename: Optional[str] = None,
     ) -> ScoreResponse:
-        """Runs baseline feature extraction, classification, calibration, and PRD response formation."""
+        """Runs the complete M3 production scoring pipeline."""
         if not audio_bytes:
             raise ValueError("Audio content cannot be empty.")
 
-        # 1. Decode audio bytes
+        # 1. Normalize Operating Point (FR-13)
+        canonical_op = normalize_operating_point(operating_point)
+
+        # 2. Decode Audio Bytes (FR-1)
         try:
             samples, rate = decode_wav(audio_bytes)
         except Exception:
@@ -161,111 +168,154 @@ class ScoringEngine:
             except Exception as exc:
                 raise ValueError(f"Failed to decode audio file: {exc}") from exc
 
-        # 2. VAD Segmentation (FR-9)
+        # 3. Speech Activity Detection (FR-3)
         spans = vad_segments(samples, rate)
-        if not spans:
-            spans = [(0, len(samples))]
 
-        # 3. Feature Extraction & Scoring per Segment
-        segments: list[Segment] = []
-        raw_logits: list[float] = []
-        seg_probs: list[float] = []
+        # 4. Acoustic Condition Assessment (FR-2)
+        cond_result = assess_conditions(
+            samples=samples,
+            sample_rate=rate,
+            spans=spans,
+            filename=filename,
+            min_speech_duration_ms=2000,
+            min_snr_db=3.0,
+            max_clipping_ratio=0.25,
+        )
 
-        weights = self.detector.weights
-        bias = self.detector.bias
-        calibrator = self.detector.calibrator
+        conditions = Conditions(
+            effective_bandwidth_hz=cond_result.effective_bandwidth_hz,
+            estimated_codec_chain=cond_result.estimated_codec_chain,
+            snr_db=cond_result.snr_db,
+            speech_duration_ms=cond_result.speech_duration_ms,
+            quality_gate=cond_result.quality_gate,
+            clipping_ratio=cond_result.clipping_ratio,
+        )
 
-        for st, ed in spans:
-            seg_samples = samples[st:ed]
-            if len(seg_samples) < 32:
-                continue
-            feats = self.frontend.embed(seg_samples, rate)[:10]
-            logit = bias + sum(w * x for w, x in zip(weights, feats))
-            prob = calibrator.transform([logit])[0]
-            raw_logits.append(logit)
-            seg_probs.append(prob)
+        # 5. Language and Code-Switch Reporting (FR-10)
+        lang_report = detect_language(samples, rate, language_hint=language)
 
-            segments.append(
-                Segment(
-                    start_ms=round(st * 1000 / rate),
-                    end_ms=round(ed * 1000 / rate),
-                    score=round(float(prob), 4),
-                )
-            )
-
-        if not seg_probs:
-            feats = self.frontend.embed(samples, rate)[:10]
-            logit = bias + sum(w * x for w, x in zip(weights, feats))
-            prob = calibrator.transform([logit])[0]
-            raw_logits.append(logit)
-            seg_probs.append(prob)
-            segments.append(
-                Segment(start_ms=0, end_ms=round(len(samples) * 1000 / rate), score=round(float(prob), 4))
-            )
-
-        overall_prob = float(np.mean(seg_probs))
-        overall_prob = max(0.0, min(1.0, round(overall_prob, 4)))
-
-        # 4. Operating Point Thresholds & 3-Band Verdict (FR-12, FR-13)
-        t_cfg = self.detector.threshold_config
-        op_key = operating_point.replace("pct", "%")
-        op_thresholds = t_cfg.operating_point_thresholds if t_cfg else {}
-
-        # Default bands from operating point or configuration
-        high_th = t_cfg.high_threshold if t_cfg else 0.65
-        low_th = t_cfg.low_threshold if t_cfg else 0.35
-
-        # Adjust based on requested operating point if present in threshold map
-        if op_key in op_thresholds:
-            high_th = float(op_thresholds[op_key])
-
-        if overall_prob > high_th:
-            band = VerdictBand.LIKELY_SYNTHETIC
-            reason = None
-        elif overall_prob < low_th:
-            band = VerdictBand.CONSISTENT_WITH_HUMAN
-            reason = None
-        else:
-            band = VerdictBand.INCONCLUSIVE
-            reason = "calibrated_score_in_inconclusive_band"
-
-        # 5. Acoustic Conditions (FR-2)
-        snr_db = _calculate_snr_db(samples, spans)
-        duration_ms = round(len(samples) * 1000 / rate)
-        bandwidth_hz = min(rate // 2, 8000) if rate <= 16000 else 16000
-
-        codec_guess = ["clean"]
-        if rate == 8000:
-            codec_guess = ["g711_8khz"]
-        elif snr_db < 15.0:
-            codec_guess = ["telecom_degraded"]
-
-        quality_gate = "passed" if duration_ms >= 500 and snr_db >= 5.0 else "failed"
-
-        # 6. Provenance (FR-7: Safety Invariant strictly enforced)
-        # Missing credentials MUST NEVER contribute to synthetic verdict
+        # 6. Provenance Safety (FR-7: Missing credentials NEVER contribute to synthetic verdict)
         provenance = Provenance(
             c2pa="not_present",
             watermark="not_present",
             contributed_to_verdict=False,
         )
 
-        # 7. Auditable Evidence (FR-15)
-        feature_names = [
-            "mean", "norm_rms", "zcr", "log_duration",
-            "spectral_centroid", "spectral_bandwidth", "spectral_rolloff",
-            "spectral_flatness", "frame_energy_var", "spectral_flux",
-        ]
-        sig_conts = [
-            SignalContribution(signal=f"waveform_{fname}", weight=round(float(abs(w)), 4))
-            for fname, w in zip(feature_names, weights)
+        # 7. Real Signal Contributions for Evidence (FR-15)
+        weights = self.detector.weights
+        abs_weights = [abs(w) for w in weights]
+        total_w = sum(abs_weights) if sum(abs_weights) > 0 else 1.0
+        signal_contributions = [
+            SignalContribution(signal=fname, weight=round(float(w / total_w), 4))
+            for fname, w in zip(FEATURE_NAMES, abs_weights)
         ]
 
+        # 8. MANDATORY QUALITY GATE CHECK (FR-4):
+        # If total speech < 2.0s OR condition floor not met:
+        # return band = inconclusive with reason = insufficient_signal and DO NOT emit a detection score.
+        # This state is non-disableable by configuration.
+        if cond_result.quality_gate == "failed":
+            evidence = Evidence(
+                signal_contributions=signal_contributions,
+                language_detected=lang_report.language_code,
+                model_version=self.detector.model_version,
+                threshold_version=THRESHOLD_VERSION,
+                operating_point=canonical_op,
+                flagged_segment_ranges=[],
+                code_switch_mix=lang_report.code_switch_mix,
+                uncertain_language=lang_report.uncertain,
+            )
+            return ScoreResponse(
+                job_id=job_id,
+                verdict=Verdict(
+                    band=VerdictBand.INCONCLUSIVE,
+                    probability=0.0,
+                    operating_point=canonical_op,
+                    reason="insufficient_signal",
+                ),
+                segments=[],
+                conditions=conditions,
+                provenance=provenance,
+                evidence=evidence,
+            )
+
+        # 9. Windowing & Per-Segment Model Inference (FR-8)
+        windows = generate_speech_windows(spans, rate, window_ms=1000, hop_ms=500)
+        if not windows:
+            windows = spans
+
+        scored_segs = score_speech_segments(
+            samples=samples,
+            sample_rate=rate,
+            windows=windows,
+            weights=weights,
+            bias=self.detector.bias,
+            calibrator=self.detector.calibrator,
+            frontend=self.frontend,
+        )
+
+        if not scored_segs:
+            # Fallback to whole-signal evaluation if no window qualified
+            feats = self.frontend.embed(samples, rate)[: len(weights)]
+            raw_logit = self.detector.bias + sum(w * x for w, x in zip(weights, feats))
+            prob = float(self.detector.calibrator.transform([raw_logit])[0])
+            prob = max(0.0, min(1.0, round(prob, 4)))
+            scored_segs = [
+                score_speech_segments(
+                    samples=samples,
+                    sample_rate=rate,
+                    windows=[(0, len(samples))],
+                    weights=weights,
+                    bias=self.detector.bias,
+                    calibrator=self.detector.calibrator,
+                    frontend=self.frontend,
+                )[0]
+            ]
+
+        # 10. Utterance-Level Aggregation
+        overall_prob = float(np.mean([s.score for s in scored_segs]))
+        overall_prob = max(0.0, min(1.0, round(overall_prob, 4)))
+
+        # 11. Partial-Spoof Localization (FR-9)
+        t_cfg = self.detector.threshold_config
+        active_high_th = t_cfg.get_high_threshold(canonical_op) if t_cfg else 0.65
+        flagged_segs = localize_partial_spoofs(
+            scored_segments=scored_segs,
+            operating_threshold=active_high_th,
+            max_gap_ms=300,
+        )
+        response_segments = [
+            Segment(start_ms=s.start_ms, end_ms=s.end_ms, score=s.score)
+            for s in flagged_segs
+        ]
+
+        # 12. Operating-Point Banding (FR-12, FR-13)
+        verdict_str = assign_verdict_band(
+            probability=overall_prob,
+            config=t_cfg,
+            operating_point=canonical_op,
+        )
+
+        if verdict_str == "likely_synthetic":
+            band = VerdictBand.LIKELY_SYNTHETIC
+            reason = None
+        elif verdict_str == "consistent_with_human":
+            band = VerdictBand.CONSISTENT_WITH_HUMAN
+            reason = None
+        else:
+            band = VerdictBand.INCONCLUSIVE
+            reason = "calibrated_score_in_inconclusive_band"
+
+        # 13. Populate Evidence (FR-15)
         evidence = Evidence(
-            signal_contributions=sig_conts,
-            language_detected=language or "en",
+            signal_contributions=signal_contributions,
+            language_detected=lang_report.language_code,
             model_version=self.detector.model_version,
-            threshold_version="thr-m2-calibrated-v1",
+            threshold_version=THRESHOLD_VERSION,
+            operating_point=canonical_op,
+            flagged_segment_ranges=response_segments,
+            code_switch_mix=lang_report.code_switch_mix,
+            uncertain_language=lang_report.uncertain,
         )
 
         return ScoreResponse(
@@ -273,17 +323,11 @@ class ScoringEngine:
             verdict=Verdict(
                 band=band,
                 probability=overall_prob,
-                operating_point=operating_point,
+                operating_point=canonical_op,
                 reason=reason,
             ),
-            segments=segments,
-            conditions=Conditions(
-                effective_bandwidth_hz=bandwidth_hz,
-                estimated_codec_chain=codec_guess,
-                snr_db=snr_db,
-                speech_duration_ms=duration_ms,
-                quality_gate=quality_gate,
-            ),
+            segments=response_segments,
+            conditions=conditions,
             provenance=provenance,
             evidence=evidence,
         )

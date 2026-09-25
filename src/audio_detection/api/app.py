@@ -123,7 +123,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # =====================================================================
 
 def get_scorer_backend() -> str:
-    return os.environ.get("SCORER_BACKEND", "m2").lower()
+    return os.environ.get("SCORER_BACKEND", "m3").lower()
 
 
 def get_model_version() -> str:
@@ -174,15 +174,18 @@ async def score_audio(
         )
 
     # 2. Resolve operating_point and language (form takes precedence over query)
-    effective_op = operating_point or query_op or "fpr_1pct"
+    raw_op = operating_point or query_op or "fpr_1pct"
     effective_lang = language or query_lang
 
-    if effective_op not in VALID_OPERATING_POINTS:
+    try:
+        from audio_detection.calibration import normalize_operating_point
+        effective_op = normalize_operating_point(raw_op)
+    except Exception:
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error_code="INVALID_REQUEST",
-            message=f"Invalid operating_point '{effective_op}'. Supported values are: {sorted(list(VALID_OPERATING_POINTS))}.",
-            details={"allowed": sorted(list(VALID_OPERATING_POINTS)), "received": effective_op},
+            message=f"Invalid operating_point '{raw_op}'. Supported values are: {sorted(list(VALID_OPERATING_POINTS))}.",
+            details={"allowed": sorted(list(VALID_OPERATING_POINTS)), "received": raw_op},
         )
 
     # 3. Extension / Format validation (PRD FR-1)

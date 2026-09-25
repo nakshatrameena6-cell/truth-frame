@@ -1,0 +1,72 @@
+{
+  "milestone": "M3",
+  "model_version": "m2-waveform-10d",
+  "threshold_version": "thr-m3-v1",
+  "calibration": {
+    "version": "cal-m3-platt-v1",
+    "method": "platt_scaling_logistic",
+    "scale": 1.7507097392327118,
+    "shift": -1.1916178038442269,
+    "temperature_equivalent": 0.571197,
+    "fitted_on_split": "validation",
+    "validation_samples": 32,
+    "test_set_fitting": false,
+    "validation_ece": 0.0418,
+    "test_ece": 0.0537
+  },
+  "operating_points": {
+    "fpr_0.1pct": {
+      "target_fpr": 0.001,
+      "synthetic_threshold": 0.75,
+      "description": "Ultra-low false positive rate for high-stakes blocking"
+    },
+    "fpr_1pct": {
+      "target_fpr": 0.01,
+      "synthetic_threshold": 0.65,
+      "description": "Balanced commercial operating point for call verification"
+    },
+    "fpr_5pct": {
+      "target_fpr": 0.05,
+      "synthetic_threshold": 0.50,
+      "description": "High sensitivity operating point for triage"
+    }
+  },
+  "verdict_bands": {
+    "consistent_with_human": {
+      "upper_probability": 0.35
+    },
+    "inconclusive": {
+      "mandatory": true,
+      "disableable": false,
+      "reasons": [
+        "insufficient_signal",
+        "calibrated_score_in_inconclusive_band"
+      ]
+    },
+    "likely_synthetic": {
+      "lower_probability": 0.65
+    }
+  },
+  "quality_gate": {
+    "mandatory": true,
+    "disableable": false,
+    "min_speech_duration_ms": 2000,
+    "min_snr_db": 3.0,
+    "max_clipping_ratio": 0.25,
+    "override_action": "inconclusive / insufficient_signal"
+  },
+  "localization": {
+    "window_ms": 1000,
+    "hop_ms": 500,
+    "merge_gap_ms": 300,
+    "exclude_non_speech": true
+  },
+  "provenance_safety": {
+    "fr7_invariant_enforced": true,
+    "absent_credentials_synthetic_evidence": false
+  },
+  "language_support": {
+    "supported_languages": ["en", "hi", "ta", "hi-en_codeswitch"],
+    "uncertainty_exposure": true
+  }
+}
