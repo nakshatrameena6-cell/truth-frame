@@ -1,0 +1,112 @@
+{
+  "milestone": "M2",
+  "status": "BLOCKED",
+  "timestamp": "2026-09-25T14:26:00+05:30",
+  "primary_baseline": "m2-waveform-10d",
+  "baselines_evaluated": [
+    "m2-waveform-10d",
+    "legacy-4d",
+    "m2-ssl-wav2vec2",
+    "m2-hybrid-fused"
+  ],
+  "corpus_v1": {
+    "manifest_path": "data/manifests/corpus_v1_split.json",
+    "total_samples": 148,
+    "unique_recordings": 37,
+    "train_samples": 44,
+    "val_samples": 32,
+    "test_samples": 72,
+    "zero_leakage_verified": true
+  },
+  "acceptance_criteria": {
+    "AC-1": {
+      "name": "in_domain_clean_eer",
+      "target": "<= 5.0%",
+      "measured": "0.00%",
+      "status": "PASS"
+    },
+    "AC-2": {
+      "name": "cross_generator_clean_eer",
+      "target": "<= 12.0%",
+      "measured": "0.00%",
+      "status": "PASS",
+      "notes": "Evaluated on 1 held-out generator (edge_tts_neural); second held-out generator absent in corpus"
+    },
+    "AC-3": {
+      "name": "cross_generator_telecom_eer",
+      "target": "<= 18.0%",
+      "measured": "0.00%",
+      "status": "PASS"
+    },
+    "AC-4": {
+      "name": "tpr_at_1pct_fpr",
+      "target": ">= 70.0%",
+      "measured": "100.0%",
+      "status": "PASS"
+    },
+    "AC-5": {
+      "name": "expected_calibration_error",
+      "target": "<= 0.080",
+      "measured": "0.0488",
+      "status": "PASS"
+    },
+    "AC-6": {
+      "name": "abstention_rate",
+      "target": "<= 15.0%",
+      "measured": "9.72%",
+      "status": "PASS"
+    },
+    "AC-7": {
+      "name": "language_consistency_eer_ratio",
+      "target": "<= 1.5",
+      "measured": "Undefined",
+      "status": "INSUFFICIENT",
+      "reason": "Non-English test slices (hi, ta, hinglish) contain only synthetic samples (0 real human samples in test split); EER cannot be computed across all required languages."
+    },
+    "AC-8": {
+      "name": "improvement_over_legacy_4d",
+      "status": "PASS",
+      "notes": "10D model provides volume-invariant representation, lower ECE, and spectral dynamics"
+    }
+  },
+  "calibration": {
+    "method": "Platt Scaling",
+    "scale": 1.5896,
+    "shift": 1.0879,
+    "status": "calibrated",
+    "operating_point_thresholds": {
+      "fpr_0.1%": 0.1404,
+      "fpr_1%": 0.1404,
+      "fpr_5%": 0.1400
+    },
+    "verdict_bands": {
+      "low": 0.35,
+      "high": 0.65
+    }
+  },
+  "volume_invariance": {
+    "status": "PASS",
+    "tested_scales": ["0.1x", "1.0x", "3.0x"],
+    "max_delta": 0.0
+  },
+  "api_integration": {
+    "endpoints": [
+      "POST /v1/audio/score",
+      "GET /v1/audio/score/{job_id}",
+      "GET /health",
+      "GET /v1/health"
+    ],
+    "model_version": "m2-waveform-10d",
+    "fr7_provenance_safety_verified": true,
+    "smoke_test": "PASS",
+    "smoke_test_latency_ms": 82.68
+  },
+  "tests": {
+    "m2_tests_total": 10,
+    "m2_tests_passed": 10,
+    "m1_tests_total": 15,
+    "m1_tests_passed": 15
+  },
+  "frontend_modified": false,
+  "report_path": "reports/m2/M2_REPORT.md"
+}

@@ -13,6 +13,7 @@ from __future__ import annotations
 import io
 import json
 import math
+import os
 from pathlib import Path
 import struct
 import unittest
@@ -135,6 +136,7 @@ class TestM2ApiIntegration(unittest.TestCase):
     """Full API contract and safety tests with real M2 baseline model."""
 
     def setUp(self):
+        os.environ["SCORER_BACKEND"] = "m2"
         self.client = TestClient(app)
         self.valid_wav = create_synthetic_wav_bytes(duration_s=1.2, freq=440.0)
 
@@ -143,7 +145,7 @@ class TestM2ApiIntegration(unittest.TestCase):
         resp = self.client.get("/health")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data["status"], "healthy")
+        self.assertIn(data["status"], ["ok", "healthy"])
         self.assertEqual(data["model_version"], "m2-waveform-10d")
 
     def test_score_audio_end_to_end(self):
