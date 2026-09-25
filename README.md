@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # PandaMIND — Audio Scoring API
+=======
+# Audio detection
+>>>>>>> 607b92abe7b21226f48866fc8ae7126c33328d75
 
 Content Trust Stack Audio Scoring API foundation and offline synthetic-speech detector.
 
