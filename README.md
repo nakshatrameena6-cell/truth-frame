@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # PandaMIND — Audio Scoring API
 =======
 # Audio detection
@@ -10,7 +9,7 @@ Content Trust Stack Audio Scoring API foundation and offline synthetic-speech de
 
 Milestone M1 establishes the authoritative API contract specified in `Audio-Scoring-API-PRD.pdf` v1.0, backed by a deterministic, offline stub scoring engine (`m1-stub`).
 
-> **Note on Stub Scorer**: The M1 backend returns deterministic placeholder scores derived via cryptographic SHA-256 hashing of input audio bytes. It is explicitly a stub to freeze the API contract for client integration and testing; it does NOT represent real model detection performance. Real ML inference is scheduled for Milestone M3.
+**Note on Stub Scorer**: The M1 backend returns deterministic placeholder scores derived via cryptographic SHA-256 hashing of input audio bytes. It is explicitly a stub to freeze the API contract for client integration and testing; it does NOT represent real model detection performance. Real ML inference is scheduled for Milestone M3.
 
 ---
 
